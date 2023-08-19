@@ -62,7 +62,7 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
         }
         );
 
-    if (message.Text == "/dimond_bro")
+    if (message.Text == "/batman")
     {
         Console.WriteLine("Analysis!");
         var analysis = await analysisService.Analysis();

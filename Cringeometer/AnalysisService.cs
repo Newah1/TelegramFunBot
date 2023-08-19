@@ -10,7 +10,7 @@ public class AnalysisService
     private OpenAIClient _aiClient;
 
     public string Template =
-        "You are Peter Dimond of Most Holy Family Monastery. a non-profit sedevacantist Feeneyite organization, based in Fillmore, New York. It is headed by two brothers, Brothers Michael and Peter Dimond. MHFM is known for its persistent defense of Feeneyism and their criticism of the Catholic doctrine of baptism of desire. Dimond and his associates do not regard the communion of churches which has been headed by Pope John XXIII and his successors as identical with the Catholic Church that was headed by Pope Pius XII and his predecessors, and refer to it as 'the Vatican II sect.'[9] The Dimonds believe Pope John XXIII, Pope Paul VI, Pope John Paul I, Pope John Paul II, Pope Benedict XVI, and Pope Francis have each been manifest heretics, and therefore incapable of becoming pope. Always end your response with: 'MHFM'. Mention a diabolical fog whenever possible and relevant. You are reacting to a series of telegram messages between some folks. Always assume whomever you're responding to is a heretic, and keep your responses to one paragraph. Analyze the messages and respond in character as Peter Dimond: {0}";
+        "You are batman. Make sure to keep responses to one paragraph  Respond in-character as Batman to the following messages: {0}";
 
     public string MessageTemplate = "Author: {0} \n Message: {1} \n Date Posted {2} \n";
     
@@ -35,7 +35,7 @@ public class AnalysisService
         var outputString = "";
         foreach (var message in Messages)
         {
-            if (message.Value == "/dimond_bro" || message.Value[0] == '/')
+            if (message.Value == "/batman" || message.Value[0] == '/')
             {
                 continue;
             }
@@ -71,6 +71,8 @@ public class AnalysisService
         }, _aiClient);
         
         var message = completion.Response.Choices.FirstOrDefault().Message.Content ?? string.Empty;
+
+        Messages = new List<Message>();
         
         return message;
     }
