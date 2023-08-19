@@ -1,3 +1,4 @@
+using Cringeometer.Models;
 using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
 
@@ -5,6 +6,8 @@ namespace Cringeometer;
 
 public class ChatService
 {
+    
+    public static ChatSettings ChatSettings { get; set; }
     public static async Task<ChatCompletion?> SendChat(ChatCompletionMessage msg, OpenAIClient client)
     {
         var chatCompletion = new ChatCompletion
@@ -13,7 +16,7 @@ public class ChatService
             {
                 Model = "gpt-3.5-turbo",
                 Messages = new [] { msg }, 
-                Temperature = 0.2,
+                Temperature = ChatSettings.Temperature,
                 MaxTokens = 800
             }
         };

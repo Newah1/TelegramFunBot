@@ -23,7 +23,7 @@ configurationBuilder.GetSection("TelegramSettings").Bind(telegramSettings);
 var generalSettings = new GeneralSettings();
 configurationBuilder.GetSection("GeneralSettings").Bind(generalSettings);
 
-
+ChatService.ChatSettings = chatSettings;
 
 
 var openAIConfigurations = new OpenAIConfigurations
@@ -62,7 +62,7 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
         }
         );
 
-    if (message.Text == "/batman")
+    if (message.Text.ToLower().Contains("/batman"))
     {
         Console.WriteLine("Analysis!");
         var analysis = await analysisService.Analysis();

@@ -35,7 +35,7 @@ public class AnalysisService
         var outputString = "";
         foreach (var message in Messages)
         {
-            if (message.Value == "/batman" || message.Value[0] == '/')
+            if (message.Value == "/batman")
             {
                 continue;
             }
