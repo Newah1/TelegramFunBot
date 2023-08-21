@@ -23,6 +23,13 @@ configurationBuilder.GetSection("TelegramSettings").Bind(telegramSettings);
 var generalSettings = new GeneralSettings();
 configurationBuilder.GetSection("GeneralSettings").Bind(generalSettings);
 
+var sheetsSettings = new SheetsSettings();
+configurationBuilder.GetSection("SheetsSettings").Bind(sheetsSettings);
+
+
+var personalitySheetService = new PersonalitySheetsService(sheetsSettings);
+var personalitiesFromSheet = personalitySheetService.LoadPersonalities();
+
 ChatService.ChatSettings = chatSettings;
 
 
@@ -35,6 +42,8 @@ var openAiClient = new OpenAIClient(openAIConfigurations);
 var personalities = new List<Personality>();
 configurationBuilder.GetSection("Personalities").Bind(personalities);
 
+personalities.AddRange(personalitiesFromSheet);
+
 
 var analyzers = new List<AnalysisService>();
 
@@ -42,6 +51,8 @@ foreach (var personality in personalities)
 {
     analyzers.Add(AnalysisService.GetAnalyzer(personality, openAiClient));
 }
+
+var lastTimeRanSpreadsheet = DateTime.Now;
 
 // Telegram 
 
@@ -73,6 +84,52 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
     foreach (var analysisService in analyzers)
     {
         analysisService.AddMessage(message1);
+    }
+
+    if ((DateTime.Now - lastTimeRanSpreadsheet).TotalSeconds > 60)
+    {
+        var refreshValues = personalitySheetService.LoadPersonalities();
+        var personalitiesRefreshed = new List<Personality>();
+        foreach (var personality in personalities)
+        {
+            var personalityToAdd = new Personality();
+            var newCommands = refreshValues.Select(e => e.Command).ToList();
+            if (newCommands.Contains(personality.Command))
+            {
+                personalityToAdd = refreshValues.Where(rf => rf.Command == personality.Command).FirstOrDefault();
+            }
+            else
+            {
+                personalityToAdd = personality;
+            }
+            personalitiesRefreshed.Add(personalityToAdd);
+        }
+
+        var newPersonalities = refreshValues
+            .Where(r => !personalitiesRefreshed.Select(e => e.Command).Contains(r.Command)).ToList();
+        personalitiesRefreshed.AddRange(
+                newPersonalities
+            );
+
+        personalities = personalitiesRefreshed;
+
+        foreach (var analysisService in analyzers)
+        {
+            var matchingPersonality = personalities.FirstOrDefault(p => p.Command == analysisService.Command);
+            if (matchingPersonality != null)
+            {
+                analysisService.Template = matchingPersonality.PersonalityDescription;
+            }
+        }
+
+        foreach (var personality in newPersonalities)
+        {
+            analyzers.Add(
+                AnalysisService.GetAnalyzer(personality, openAiClient)
+                );
+        }
+        
+        lastTimeRanSpreadsheet = DateTime.Now;
     }
     
     Console.WriteLine($"Got a message from {message.From.FirstName} with contents: {messageText}");

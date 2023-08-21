@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="Google.Apis.Sheets.v4" Version="1.61.0.3141" />
       <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0-preview.7.23375.6" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0-preview.7.23375.6" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0-preview.7.23375.6" />
@@ -22,6 +23,13 @@
       <None Update="appsettings.prod.json">
         <DependentUpon>appsettings.json</DependentUpon>
       </None>
+      <None Update="app_client_secret.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Analyzers" />
     </ItemGroup>
 
 </Project>
