@@ -7,16 +7,29 @@ namespace Cringeometer;
 public class AnalysisService
 {
     public List<Message> Messages = new List<Message>();
+    public List<Message> OwnMessages = new List<Message>();
     private OpenAIClient _aiClient;
+    public string Command = "/batman";
+    public string Name = "Batman";
 
     public string Template =
-        "You are batman. Make sure to keep responses to one paragraph  Respond in-character as Batman to the following messages: {0}";
+        @"You are Batman
+Make sure to keep responses to one paragraph  Here is the context of the messages: {0}";
 
     public string MessageTemplate = "Author: {0} \n Message: {1} \n Date Posted {2} \n";
     
     public AnalysisService(OpenAIClient aiClient)
     {
         _aiClient = aiClient;
+    }
+
+    public static AnalysisService GetAnalyzer(Personality personality, OpenAIClient aiClient)
+    {
+        var analyzer = new AnalysisService(aiClient);
+        analyzer.Template = personality.PersonalityDescription;
+        analyzer.Command = personality.Command;
+        analyzer.Name = personality.Name;
+        return analyzer;
     }
 
     public void AddMessage(Message message)
@@ -33,15 +46,49 @@ public class AnalysisService
     private string BuildMessages()
     {
         var outputString = "";
-        foreach (var message in Messages)
+        for(var i = Messages.Count - 1; i >= 0; i--)
         {
-            if (message.Value == "/batman")
+            var message = Messages[i];
+            if (message.Value.ToLower() == Command)
             {
                 continue;
             }
             outputString += String.Format(MessageTemplate, message.Author, message.Value,
                 message.DatePosted.ToString("f"));
         }
+
+        return outputString;
+    }
+    
+    private string BuildMessagesHistory()
+    {
+        if (OwnMessages.Count == 0)
+        {
+            return "";
+        } 
+        var outputString = "";
+        var ownMessagesSelection = OwnMessages.GetRange(0, Math.Min(5, OwnMessages.Count));
+        for(var i = ownMessagesSelection.Count - 1; i >= 0; i--)
+        {
+            var message = ownMessagesSelection[i];
+            if (message.Value.ToLower() == Command)
+            {
+                continue;
+            }
+
+            outputString += message.Value;
+        }
+
+        return outputString;
+    }
+
+    private string BuildMostRecentMessage()
+    {
+        var outputString = "";
+
+        var lastMessage = Messages[^1];
+        outputString += String.Format(" respond in character to "+MessageTemplate, lastMessage.Author, lastMessage.Value,
+            lastMessage.DatePosted.ToString("f"));
 
         return outputString;
     }
@@ -63,17 +110,49 @@ public class AnalysisService
                 return "";
             }
         }
+        Console.WriteLine(anslysisPrompt);
 
-        var completion = await ChatService.SendChat(new ChatCompletionMessage()
+        var mostRecentPrompt = BuildMostRecentMessage();
+        Console.WriteLine(mostRecentPrompt);
+
+        var ownMessages = BuildMessagesHistory();
+        Console.WriteLine(ownMessages);
+        var msgs = new List<ChatCompletionMessage>()
         {
-            Content = anslysisPrompt,
-            Role = "user"
-        }, _aiClient);
+            new()
+            {
+                Content = ownMessages,
+                Role = "assistant"
+            },
+            new()
+            {
+                Content = anslysisPrompt,
+                Role = "system"
+            },
+            new()
+            {
+                Content = mostRecentPrompt,
+                Role = "user"
+            }
+        };
+
+        var completion = await ChatService.SendChat(msgs.ToArray(), _aiClient);
         
         var message = completion.Response.Choices.FirstOrDefault().Message.Content ?? string.Empty;
+        
+        OwnMessages.Add(new Message()
+        {
+            Value = message,
+            DatePosted = DateTime.Now
+        });
 
-        Messages = new List<Message>();
+        ClearMessages();
         
         return message;
+    }
+
+    protected virtual void ClearMessages()
+    {
+        //Messages = new List<Message>();
     }
 }

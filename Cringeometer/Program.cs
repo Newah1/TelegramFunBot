@@ -32,7 +32,17 @@ var openAIConfigurations = new OpenAIConfigurations
 };
 var openAiClient = new OpenAIClient(openAIConfigurations);
 
-var analysisService = new AnalysisService(openAiClient);
+var personalities = new List<Personality>();
+configurationBuilder.GetSection("Personalities").Bind(personalities);
+
+
+var analyzers = new List<AnalysisService>();
+
+foreach (var personality in personalities)
+{
+    analyzers.Add(AnalysisService.GetAnalyzer(personality, openAiClient));
+}
+
 // Telegram 
 
 var botClient = TelegramService.SetupClient(telegramSettings);
@@ -52,24 +62,46 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
         return;
     
     var chatId = message.Chat.Id;
-    
-    analysisService.AddMessage(
-        new Cringeometer.Models.Message()
-        {
-            Author = message.From.Username + " " + message.From.FirstName,
-            DatePosted = message.Date,
-            Value = messageText
-        }
-        );
 
-    if (message.Text.ToLower().Contains("/batman"))
+    var message1 = new Cringeometer.Models.Message()
     {
-        Console.WriteLine("Analysis!");
-        var analysis = await analysisService.Analysis();
-        await botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: analysis,
-            cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
+        Author = message.From.Username + " " + message.From.FirstName,
+        DatePosted = message.Date,
+        Value = messageText
+    };
+
+    foreach (var analysisService in analyzers)
+    {
+        analysisService.AddMessage(message1);
+    }
+    
+    Console.WriteLine($"Got a message from {message.From.FirstName} with contents: {messageText}");
+    string analysis = "";
+    foreach (var analysisService in analyzers)
+    {
+        if (messageText.ToLower().Contains(analysisService.Command))
+        {
+            Console.WriteLine($"Handling analysis with ");
+            analysis = await analysisService.Analysis();
+            await botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: analysis,
+                cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
+            
+            // give other analyzers your most recent message
+            foreach (var otherAnalyzers in analyzers.Where(a => a != analysisService).ToList())
+            {
+                Console.WriteLine($"Giving {otherAnalyzers.Name} the most recent message [{analysis.Substring(0, 10)}...]");
+                otherAnalyzers.AddMessage(
+                        new Cringeometer.Models.Message()
+                        {
+                            Author = analysisService.Name,
+                            DatePosted = DateTime.Now,
+                            Value = analysis
+                        }
+                    );
+            }
+        }
     }
 }
 
@@ -93,7 +125,7 @@ async void HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
         Role = "user" 
     };
 
-    var response = await ChatService.SendChat(chatMsg, openAiClient);
+    var response = await ChatService.SendChat(new [] {chatMsg}, openAiClient);
 
     var cringeLevel = 0.0d;
 

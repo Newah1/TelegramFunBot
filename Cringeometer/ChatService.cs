@@ -8,14 +8,14 @@ public class ChatService
 {
     
     public static ChatSettings ChatSettings { get; set; }
-    public static async Task<ChatCompletion?> SendChat(ChatCompletionMessage msg, OpenAIClient client)
+    public static async Task<ChatCompletion?> SendChat(ChatCompletionMessage[] msgs, OpenAIClient client)
     {
         var chatCompletion = new ChatCompletion
         {
             Request = new ChatCompletionRequest
             {
                 Model = "gpt-3.5-turbo",
-                Messages = new [] { msg }, 
+                Messages = msgs, 
                 Temperature = ChatSettings.Temperature,
                 MaxTokens = 800
             }
