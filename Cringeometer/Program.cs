@@ -49,7 +49,7 @@ var analyzers = new List<AnalysisService>();
 
 foreach (var personality in personalities)
 {
-    analyzers.Add(AnalysisService.GetAnalyzer(personality, openAiClient));
+    analyzers.Add(AnalysisService.GetAnalyzer(personality, openAiClient, chatSettings));
 }
 
 var lastTimeRanSpreadsheet = DateTime.Now;
@@ -68,6 +68,8 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
     // Only process Message updates: https://core.telegram.org/bots/api#message
     if (update.Message is not { } message)
         return;
+
+    if (message == null) return;
     // Only process text messages
     if (message.Text is not { } messageText)
         return;
@@ -84,6 +86,14 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
     foreach (var analysisService in analyzers)
     {
         analysisService.AddMessage(message1);
+    }
+
+    if (messageText.ToLower() == "/wipe_context")
+    {
+        foreach (var analysisService in analyzers)
+        {
+            analysisService.WipeMessages();
+        }
     }
 
     if ((DateTime.Now - lastTimeRanSpreadsheet).TotalSeconds > 60)
@@ -125,7 +135,7 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
         foreach (var personality in newPersonalities)
         {
             analyzers.Add(
-                AnalysisService.GetAnalyzer(personality, openAiClient)
+                AnalysisService.GetAnalyzer(personality, openAiClient, chatSettings)
                 );
         }
         
@@ -140,6 +150,7 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
         {
             Console.WriteLine($"Handling analysis with ");
             analysis = await analysisService.Analysis();
+            if (string.IsNullOrEmpty(analysis)) continue;
             await botClient.SendTextMessageAsync(
                 chatId: chatId,
                 text: analysis,

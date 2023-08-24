@@ -42,7 +42,7 @@ public class PersonalitySheetsService
 
     public List<Personality> LoadPersonalities()
     {
-        var range = "A2:C";
+        var range = "A2:D";
         
         SpreadsheetsResource.ValuesResource.GetRequest request =
             _service.Spreadsheets.Values.Get(_spreadsheetId, range);
@@ -59,14 +59,24 @@ public class PersonalitySheetsService
                 try
                 {
                     Console.WriteLine("{0} | {1} | {2} ", row[0], row[1], row[2]);
-                
+
+                    var newPerson = new Personality()
+                    {
+                        Command = row[0].ToString(),
+                        PersonalityDescription = row[1].ToString(),
+                        Name = row[2].ToString()
+                    };
+                    
+                    // try to get the temp
+                    if (row.ElementAtOrDefault(3) != null)
+                    {
+                        double temp;
+                        Double.TryParse((string)row[3], out temp);
+                        newPerson.Temperature = temp;
+                    }
+
                     personalities.Add(
-                        new Personality()
-                        {
-                            Command = row[0].ToString(),
-                            PersonalityDescription = row[1].ToString(),
-                            Name = row[2].ToString()
-                        }
+                        newPerson
                     );
                 }
                 catch (Exception e)

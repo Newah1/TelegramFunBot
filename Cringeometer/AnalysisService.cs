@@ -9,6 +9,8 @@ public class AnalysisService
     public List<Message> Messages = new List<Message>();
     public List<Message> OwnMessages = new List<Message>();
     private OpenAIClient _aiClient;
+    private ChatSettings _chatSettings;
+    private Personality _personality;
     public string Command = "/batman";
     public string Name = "Batman";
 
@@ -18,14 +20,16 @@ Make sure to keep responses to one paragraph  Here is the context of the message
 
     public string MessageTemplate = "Author: {0} \n Message: {1} \n Date Posted {2} \n";
     
-    public AnalysisService(OpenAIClient aiClient)
+    public AnalysisService(OpenAIClient aiClient, ChatSettings chatSettings, Personality personality)
     {
         _aiClient = aiClient;
+        _chatSettings = chatSettings;
+        _personality = personality;
     }
 
-    public static AnalysisService GetAnalyzer(Personality personality, OpenAIClient aiClient)
+    public static AnalysisService GetAnalyzer(Personality personality, OpenAIClient aiClient, ChatSettings chatSettings)
     {
-        var analyzer = new AnalysisService(aiClient);
+        var analyzer = new AnalysisService(aiClient, chatSettings, personality);
         analyzer.Template = personality.PersonalityDescription;
         analyzer.Command = personality.Command;
         analyzer.Name = personality.Name;
@@ -87,7 +91,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         var outputString = "";
 
         var lastMessage = Messages[^1];
-        outputString += String.Format(" respond in character to "+MessageTemplate, lastMessage.Author, lastMessage.Value,
+        outputString += String.Format("Respond directly in character to this message, not to the previous context, but to the most recent message here: "+MessageTemplate, lastMessage.Author, lastMessage.Value,
             lastMessage.DatePosted.ToString("f"));
 
         return outputString;
@@ -97,7 +101,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
     {
         var anslysisPrompt = String.Format(Template, BuildMessages());
 
-        while (TokenEstimatorService.EstimateTokens(anslysisPrompt) > 4500)
+        while (TokenEstimatorService.EstimateTokens(anslysisPrompt) > 16000 && Messages.Count > 0)
         {
             try
             {
@@ -136,7 +140,12 @@ Make sure to keep responses to one paragraph  Here is the context of the message
             }
         };
 
-        var completion = await ChatService.SendChat(msgs.ToArray(), _aiClient);
+        var completion = await ChatService.SendChat(msgs.ToArray(), _aiClient, _personality.Temperature ?? _chatSettings.Temperature);
+
+        if (completion == null || completion.Response == null)
+        {
+            return "";
+        }
         
         var message = completion.Response.Choices.FirstOrDefault().Message.Content ?? string.Empty;
         
@@ -154,5 +163,10 @@ Make sure to keep responses to one paragraph  Here is the context of the message
     protected virtual void ClearMessages()
     {
         //Messages = new List<Message>();
+    }
+    
+    public void WipeMessages()
+    {
+        Messages = new List<Message>();
     }
 }
