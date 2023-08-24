@@ -8,6 +8,7 @@ using Standard.AI.OpenAI.Models.Configurations;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 Console.WriteLine("Hello, World!");
 
@@ -149,6 +150,7 @@ async void HandleAnalysis(ITelegramBotClient botClient, Update update, Cancellat
         if (messageText.ToLower().Contains(analysisService.Command))
         {
             Console.WriteLine($"Handling analysis with ");
+            await botClient.SendChatActionAsync(chatId, ChatAction.Typing, message.ReplyToMessage?.MessageId);
             analysis = await analysisService.Analysis();
             if (string.IsNullOrEmpty(analysis)) continue;
             await botClient.SendTextMessageAsync(
