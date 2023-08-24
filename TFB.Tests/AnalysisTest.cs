@@ -1,8 +1,8 @@
-using Cringeometer.Models;
 using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Configurations;
+using TFB.Models;
 
-namespace Cringeometer.Tests;
+namespace TFB.Tests;
 
 public class Tests
 {
@@ -11,7 +11,7 @@ public class Tests
     [SetUp]
     public void Setup()
     {
-        _analysisService = new AnalysisService(new OpenAIClient(new OpenAIConfigurations()));
+        _analysisService = new AnalysisService(new OpenAIClient(new OpenAIConfigurations()), new ChatSettings(), new Personality());
     }
 
     [Test]

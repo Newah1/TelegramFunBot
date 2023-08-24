@@ -1,6 +1,6 @@
 using NUnit.Framework;
 
-namespace Cringeometer.Tests;
+namespace TFB.Tests;
 
 
 public class TokenTest
