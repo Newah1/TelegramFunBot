@@ -64,6 +64,7 @@ botClient.OnUpdateActions.Add(HandleAnalysis);
 
 await botClient.StartReceiving();
 
+
 async void HandleAnalysis(ITelegramBotClient bClient, Update update, CancellationToken cancellationToken)
 {
     // Only process Message updates: https://core.telegram.org/bots/api#message
@@ -73,7 +74,15 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
     // Only process text messages
     if (message.Text is not { } messageText)
         return;
-    
+
+    var command = "";
+    if (update.Message?.Entities?.Length > 0 && update.Message.Entities.FirstOrDefault(type => type.Type == MessageEntityType.BotCommand) != null)
+    {
+        command = update.Message?.EntityValues?.FirstOrDefault() ?? "";
+    }
+
+    if (string.IsNullOrEmpty(command)) return;
+
     var chatId = message.Chat.Id;
 
     var message1 = new TFB.Models.Message()
@@ -88,12 +97,22 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
         analysisService.AddMessage(message1);
     }
 
-    if (messageText.ToLower() == "/wipe_context")
+    if (command == "/wipe_context")
     {
         foreach (var analysisService in analyzers)
         {
             analysisService.WipeMessages();
         }
+        await bClient.SendTextMessageAsync(
+            chatId: chatId,
+            text: $"Wiped {analyzers.Count.ToString()} personalities.",
+            cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
+    } else if (command == "/report")
+    {
+        await bClient.SendTextMessageAsync(
+            chatId: chatId,
+            text: new ReportService(analyzers).GenerateReport(),
+            cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
     }
 
     if ((DateTime.Now - lastTimeRanSpreadsheet).TotalSeconds > 60)
@@ -144,7 +163,7 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
     string analysis;
     foreach (var analysisService in analyzers)
     {
-        if (messageText.ToLower().Contains(analysisService.Command))
+        if (command.ToLower().Trim() == analysisService.Command)
         {
             Console.WriteLine($"Handling analysis with ");
             

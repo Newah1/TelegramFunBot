@@ -10,7 +10,7 @@ public class AnalysisService
 {
     public List<Models.Message> Messages = new List<Models.Message>();
     public List<Models.Message> OwnMessages = new List<Models.Message>();
-    private Personality _personality;
+    public Personality _personality;
     
     private OpenAIClient _aiClient;
     private ChatSettings _chatSettings;
@@ -155,7 +155,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
             return "";
         }
         
-        var message = completion.Response.Choices.FirstOrDefault().Message.Content ?? string.Empty;
+        var message = completion.Response.Choices.FirstOrDefault()?.Message.Content ?? string.Empty;
         
         OwnMessages.Add(new Models.Message()
         {
