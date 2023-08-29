@@ -40,6 +40,8 @@ var openAiConfigurations = new OpenAIConfigurations
 };
 var openAiClient = new OpenAIClient(openAiConfigurations);
 
+var compressorService = new CompressorService(openAiClient);
+
 var personalities = new List<Personality>();
 configurationBuilder.GetSection("Personalities").Bind(personalities);
 
@@ -87,7 +89,7 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
 
     var message1 = new TFB.Models.Message()
     {
-        Author = message.From?.Username + " " + message.From?.FirstName,
+        Author = message.From?.FirstName,
         DatePosted = message.Date,
         Value = messageText
     };
@@ -185,12 +187,22 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
                 text: analysis,
                 cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
 
-            
-            
+            var compressionResponse = await compressorService.RequestCompression(analysisService.BuildMessages());
+
+            if (compressionResponse.Success)
+            {
+                analysisService.Compressed = compressionResponse.Compressed;
+            }
+
             // give other analyzers your most recent message
             foreach (var otherAnalyzers in analyzers.Where(a => a != analysisService).ToList())
             {
                 Console.WriteLine($"Giving {otherAnalyzers.Name} the most recent message [{analysis.Substring(0, 10)}...]");
+                if (compressionResponse.Success)
+                {
+                    otherAnalyzers.Compressed = compressionResponse.Compressed;
+                }
+
                 otherAnalyzers.AddMessage(
                         new TFB.Models.Message()
                         {

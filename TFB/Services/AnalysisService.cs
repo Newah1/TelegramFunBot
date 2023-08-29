@@ -16,6 +16,7 @@ public class AnalysisService
     private ChatSettings _chatSettings;
     public string Command = "/batman";
     public string Name = "Batman";
+    public string Compressed = "";
 
     public string Template =
         @"You are Batman, 
@@ -44,7 +45,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         return analyzer;
     }
 
-    public void AddMessage(Models.Message message)
+    public void AddMessage(Message message)
     {
         if (Messages.Count >= 100)
         {
@@ -55,10 +56,10 @@ Make sure to keep responses to one paragraph  Here is the context of the message
     }
 
 
-    private string BuildMessages()
+    public string BuildMessages()
     {
         var outputString = "";
-        for(var i = Messages.Count - 1; i >= 0; i--)
+        for(var i = 0; i < Messages.Count; i++)
         {
             var message = Messages[i];
             if (message.Value.ToLower() == Command)
@@ -72,12 +73,8 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         return outputString;
     }
     
-    private string BuildMessagesHistory()
+    public string BuildMessagesHistory()
     {
-        if (OwnMessages.Count == 0)
-        {
-            return "";
-        } 
         var outputString = "";
         var ownMessagesSelection = OwnMessages.GetRange(0, Math.Min(5, OwnMessages.Count));
         for(var i = ownMessagesSelection.Count - 1; i >= 0; i--)
@@ -94,20 +91,32 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         return outputString;
     }
 
-    private string BuildMostRecentMessage()
+    public string BuildMostRecentMessage(bool preamble = true)
     {
         var outputString = "";
 
-        var lastMessage = Messages[^1];
-        outputString += String.Format("Respond directly in character to this message, not to the previous context, but to the most recent message here: "+MessageTemplate, lastMessage.Author, lastMessage.Value,
-            lastMessage.DatePosted.ToString("f"));
+        var format = MessageTemplate;
+
+        if (preamble)
+        {
+            format =
+                "Respond directly in character to this message, not to the previous context, but to the most recent message here: " +
+                MessageTemplate;
+        }
+        
+        if (Messages.Count > 0)
+        {
+            var lastMessage = Messages[^1];
+            outputString += String.Format(format, lastMessage.Author, lastMessage.Value,
+                lastMessage.DatePosted.ToString("f"));
+        }
 
         return outputString;
     }
     
     public async Task<string> Analysis()
     {
-        var anslysisPrompt = String.Format(Template, BuildMessages());
+        var anslysisPrompt = String.Format(Template, !string.IsNullOrEmpty(Compressed) ? Compressed : BuildMessages());
 
         while (TokenEstimatorService.EstimateTokens(anslysisPrompt) > 16000 && Messages.Count > 0)
         {
