@@ -12,30 +12,36 @@ public class CompressorService
         _client = client;
     }
 
-    public async Task<CompressionResponse> RequestCompression(string fullContext)
+    public List<ChatCompletionMessage> BuildBulkCompression(string[] contexts)
     {
-        var response = new CompressionResponse()
+        var role = "user";
+        var messages = new List<ChatCompletionMessage>();
+
+        messages = contexts.Select(
+            context => new ChatCompletionMessage()
+            {
+                Role = role,
+                Content =
+                    $"Your job is to take the following message chain and write a brief summary of the back and forth: {context}"
+            }).ToList();
+
+        return messages;
+    }
+
+    public async Task<List<CompressionResponse>> RequestCompression(List<ChatCompletionMessage> messages)
+    {
+        var responses = messages.Select(message => new CompressionResponse()
         {
-            Compressed = "",
-            Uncompressed = fullContext,
-            Success = false,
-            TokensBefore = TokenEstimatorService.EstimateTokens(fullContext),
-            TokensAfter = 0
-        };
+            Uncompressed = message.Content,
+            TokensBefore = TokenEstimatorService.EstimateTokens(message.Content)
+        }).ToList();
         
         var chatCompletion = new ChatCompletion
         {
             Request = new ChatCompletionRequest
             {
                 Model = "gpt-3.5-turbo-0613",
-                Messages = new ChatCompletionMessage[]
-                {
-                    new ChatCompletionMessage()
-                    {
-                        Role = "user",
-                        Content = $"Your job is to take the following message chain and write a brief summary of the back and forth: {fullContext}"
-                    }
-                },
+                Messages = messages.ToArray(),
                 Temperature = 0.7,
                 MaxTokens = 3000
             }
@@ -47,17 +53,20 @@ public class CompressorService
                 .ChatCompletions
                 .SendChatCompletionAsync(chatCompletion);
 
-            response.Compressed = result.Response.Choices.FirstOrDefault()?.Message.Content ?? "";
-            response.TokensAfter = TokenEstimatorService.EstimateTokens(response.Compressed);
-            response.Success = true;
+            for (var i = 0; i < result.Response.Choices.Length; i++)
+            {
+                var content = result.Response.Choices[i].Message.Content;
+                responses[i].Compressed = content;
+                responses[i].TokensAfter = TokenEstimatorService.EstimateTokens(content);
+                responses[i].Success = true;
+            }
         }
         catch (Exception e)
         {
             Console.WriteLine(e.Message);
-            response.Success = false;
         }
 
-        return response;
+        return responses;
     }
 }
 

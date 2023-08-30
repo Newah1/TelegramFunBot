@@ -142,11 +142,6 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         {
             new()
             {
-                Content = ownMessages,
-                Role = "assistant"
-            },
-            new()
-            {
                 Content = anslysisPrompt,
                 Role = "system"
             },

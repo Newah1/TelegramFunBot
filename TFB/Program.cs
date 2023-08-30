@@ -116,7 +116,7 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
             text: new ReportService(analyzers).GenerateReport(),
             cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
     }
-
+    
     if ((DateTime.Now - lastTimeRanSpreadsheet).TotalSeconds > 60)
     {
         var refreshValues = personalitySheetService.LoadPersonalities();
@@ -167,6 +167,16 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
     {
         if (command.ToLower().Trim() == analysisService.Command)
         {
+            if (messageText.Contains("requesting analysis"))
+            {
+                await bClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: "I know this: " + analysisService.Compressed ?? "No context.",
+                        cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
+                return;
+
+            }
+            
             Console.WriteLine($"Handling analysis with ");
             
             // tell the bot to "type"
@@ -176,10 +186,10 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
             }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
             
             analysis = await analysisService.Analysis();
-            if (string.IsNullOrEmpty(analysis)) continue;
-
             // stop "typing"
             await timer.DisposeAsync();
+            if (string.IsNullOrEmpty(analysis)) continue;
+
             
             // send the text message
             await bClient.SendTextMessageAsync(
@@ -187,20 +197,20 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
                 text: analysis,
                 cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
 
-            var compressionResponse = await compressorService.RequestCompression(analysisService.BuildMessages());
+            var compressionResponse = await compressorService.RequestCompression(compressorService.BuildBulkCompression(new string[]{ analysisService.BuildMessages(), analysisService.BuildMessagesHistory() }));
 
-            if (compressionResponse.Success)
+            if (compressionResponse.Any(cr => cr.Success))
             {
-                analysisService.Compressed = compressionResponse.Compressed;
+                analysisService.Compressed = compressionResponse.FirstOrDefault().Compressed;
             }
 
             // give other analyzers your most recent message
             foreach (var otherAnalyzers in analyzers.Where(a => a != analysisService).ToList())
             {
                 Console.WriteLine($"Giving {otherAnalyzers.Name} the most recent message [{analysis.Substring(0, 10)}...]");
-                if (compressionResponse.Success)
+                if (compressionResponse.Any(cr => cr.Success))
                 {
-                    otherAnalyzers.Compressed = compressionResponse.Compressed;
+                    otherAnalyzers.Compressed = compressionResponse.FirstOrDefault().Compressed;
                 }
 
                 otherAnalyzers.AddMessage(
