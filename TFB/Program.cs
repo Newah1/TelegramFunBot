@@ -9,6 +9,8 @@ using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using TFB.Services;
+using MessageType = TFB.Models.MessageType;
 
 Console.WriteLine("Hello, World!");
 
@@ -27,6 +29,9 @@ configurationBuilder.GetSection("GeneralSettings").Bind(generalSettings);
 var sheetsSettings = new SheetsSettings();
 configurationBuilder.GetSection("SheetsSettings").Bind(sheetsSettings);
 
+var openRouterSettings = new OpenRouterSettings();
+configurationBuilder.GetSection("OpenRouterSettings").Bind(openRouterSettings);
+
 
 var personalitySheetService = new PersonalitySheetsService(sheetsSettings);
 var personalitiesFromSheet = personalitySheetService.LoadPersonalities();
@@ -40,6 +45,8 @@ var openAiConfigurations = new OpenAIConfigurations
 };
 var openAiClient = new OpenAIClient(openAiConfigurations);
 
+var openRouterService = new OpenRouterService(openRouterSettings.ApiKey);
+
 var compressorService = new CompressorService(openAiClient);
 
 var personalities = new List<Personality>();
@@ -52,7 +59,7 @@ var analyzers = new List<AnalysisService>();
 
 foreach (var personality in personalities)
 {
-    analyzers.Add(AnalysisService.GetAnalyzer(personality, openAiClient, chatSettings));
+    analyzers.Add(AnalysisService.GetAnalyzer(personality, openAiClient, chatSettings, openRouterService));
 }
 
 var lastTimeRanSpreadsheet = DateTime.Now;
@@ -91,12 +98,14 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
     {
         Author = message.From?.FirstName,
         DatePosted = message.Date,
-        Value = messageText
+        Value = messageText,
+        MessageType = MessageType.User
     };
 
     foreach (var analysisService in analyzers)
     {
         analysisService.AddMessage(message1);
+        analysisService.CombinedMessages.Add(message1);
     }
 
     if (command == "/wipe_context")
@@ -154,7 +163,7 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
         foreach (var personality in newPersonalities)
         {
             analyzers.Add(
-                AnalysisService.GetAnalyzer(personality, openAiClient, chatSettings)
+                AnalysisService.GetAnalyzer(personality, openAiClient, chatSettings, openRouterService)
                 );
         }
         
@@ -176,7 +185,7 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
                 return;
 
             }
-            
+
             Console.WriteLine($"Handling analysis with ");
             
             // tell the bot to "type"
@@ -197,12 +206,23 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
                 text: analysis,
                 cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
 
-            var compressionResponse = await compressorService.RequestCompression(compressorService.BuildBulkCompression(new string[]{ analysisService.BuildMessages(), analysisService.BuildMessagesHistory() }));
+            var compressionResponse = await compressorService.RequestCompression(compressorService.BuildBulkCompression(new string[]{ analysisService.BuildCombinedMessages() }));
 
             if (compressionResponse.Any(cr => cr.Success))
             {
                 analysisService.Compressed = compressionResponse.FirstOrDefault().Compressed;
             }
+
+            var latestMessage = new TFB.Models.Message()
+            {
+                Author = analysisService.Name,
+                DatePosted = DateTime.Now,
+                Value = analysis,
+                MessageType = MessageType.Bot
+            };
+            analysisService.UserBotDiscourse.Add(message1);
+            analysisService.UserBotDiscourse.Add(latestMessage);
+            analysisService.CombinedMessages.Add(latestMessage);
 
             // give other analyzers your most recent message
             foreach (var otherAnalyzers in analyzers.Where(a => a != analysisService).ToList())
@@ -213,14 +233,8 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
                     otherAnalyzers.Compressed = compressionResponse.FirstOrDefault().Compressed;
                 }
 
-                otherAnalyzers.AddMessage(
-                        new TFB.Models.Message()
-                        {
-                            Author = analysisService.Name,
-                            DatePosted = DateTime.Now,
-                            Value = analysis
-                        }
-                    );
+                otherAnalyzers.AddMessage(latestMessage);
+                otherAnalyzers.CombinedMessages.Add(latestMessage);
             }
         }
     }

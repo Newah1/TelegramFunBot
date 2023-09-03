@@ -58,7 +58,7 @@ public class PersonalitySheetsService
                 // Writing Data on Console...
                 try
                 {
-                    Console.WriteLine("{0} | {1} | {2} ", row[0], row[1], row[2]);
+                    //Console.WriteLine("{0} | {1} | {2} ", row[0], row[1], row[2]);
 
                     var newPerson = new Personality()
                     {

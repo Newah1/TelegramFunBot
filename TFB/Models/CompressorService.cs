@@ -38,7 +38,7 @@ public class CompressorService
         
         var chatCompletion = new ChatCompletion
         {
-            Request = new ChatCompletionRequest
+            Request = new Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions.ChatCompletionRequest()
             {
                 Model = "gpt-3.5-turbo-0613",
                 Messages = messages.ToArray(),

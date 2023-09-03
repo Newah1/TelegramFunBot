@@ -1,6 +1,7 @@
 using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Configurations;
 using TFB.Models;
+using TFB.Services;
 
 namespace TFB.Tests;
 
@@ -11,13 +12,13 @@ public class Tests
     [SetUp]
     public void Setup()
     {
-        _analysisService = new AnalysisService(new OpenAIClient(new OpenAIConfigurations()), new ChatSettings(), new Personality());
+        _analysisService = new AnalysisService(new OpenAIClient(new OpenAIConfigurations()), new ChatSettings(), new Personality(), ChatTypes.OpenRouter, new OpenRouterService(""));
     }
 
     [Test]
     public void TestAnalysisServiceRolls100Messages()
     {
-        _analysisService.AddMessage(new Message()
+        _analysisService.AddMessage(new Models.Message()
         {
             Author = "First",
             DatePosted = DateTime.Now,
@@ -28,7 +29,7 @@ public class Tests
 
         for (int i = 0; i < 100; i++)
         {
-            _analysisService.AddMessage(new Message()
+            _analysisService.AddMessage(new Models.Message()
             {
                 Author = i + " Message",
                 DatePosted = DateTime.Now,
@@ -40,7 +41,7 @@ public class Tests
         
         for (int i = 0; i < 500; i++)
         {
-            _analysisService.AddMessage(new Message()
+            _analysisService.AddMessage(new Models.Message()
             {
                 Author = i + " Message",
                 DatePosted = DateTime.Now,
