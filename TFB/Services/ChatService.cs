@@ -64,8 +64,9 @@ public class ChatService
         {
             var chatCompletion = new Services.ChatCompletionRequest()
             {
-                Model = "meta-llama/llama-2-70b-chat",
-                Messages = msgs
+                Model = client.Model,
+                Messages = msgs,
+                Temperature = temperature
             };
             result = await client.SendRequestAsync(chatCompletion);
         }

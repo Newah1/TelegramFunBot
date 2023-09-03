@@ -141,58 +141,9 @@ Make sure to keep responses to one paragraph  Here is the context of the message
     
     public async Task<string> Analysis()
     {
-        var anslysisPrompt = String.Format(Template, !string.IsNullOrEmpty(Compressed) ? Compressed : BuildMessages());
-
-        while (TokenEstimatorService.EstimateTokens(anslysisPrompt) > 16000 && Messages.Count > 0)
-        {
-            try
-            {
-                Messages = Messages.GetRange((Messages.Count / 2) - 1, Messages.Count / 2);
-                anslysisPrompt = String.Format(Template, BuildMessages());
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("We have a bad sitch " + e.Message);
-                return "";
-            }
-        }
-        Console.WriteLine(anslysisPrompt);
-
-        var mostRecentPrompt = BuildMostRecentMessage();
-        Console.WriteLine(mostRecentPrompt);
-
-        var ownMessages = BuildMessagesHistory();
-        Console.WriteLine(ownMessages);
-        Console.WriteLine(anslysisPrompt);
-        var msgs = new List<ChatCompletionMessage>()
-        {
-            new()
-            {
-                Content = anslysisPrompt,
-                Role = "system"
-            }
-        };
-
-        foreach (var discouseMessage in UserBotDiscourse)
-        {
-            var chatCompletionMessage = new ChatCompletionMessage()
-            {
-                Content = discouseMessage.Value,
-                Role = (discouseMessage.MessageType ?? MessageType.User) == MessageType.User ? "user" : "assistant"
-            };
-            
-            msgs.Add(chatCompletionMessage);
-        }
-        
-        msgs.Add(
-            new()
-            {
-                Content = mostRecentPrompt,
-                Role = "user"
-            }
-        );
-
+        var msgs = BuildChatCompletionMessagesBasedOnHistory();
         string message = String.Empty;
+        
         if (_chatType == ChatTypes.OpenAi)
         {
             var completion = await ChatService.SendChat(msgs.ToArray(), _aiClient,
@@ -211,7 +162,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
                 Content = msg.Content,
                 Role = msg.Role
             }).ToList();
-            var completion = await ChatService.SendChat(messages.ToArray(), _aiRouterClient);
+            var completion = await ChatService.SendChat(messages.ToArray(), _aiRouterClient, temperature: _personality.Temperature ?? _chatSettings.Temperature);
 
             message = completion.Choices.FirstOrDefault().Message.Content;
         }
@@ -223,6 +174,40 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         });
         
         return message;
+    }
+
+    private List<ChatCompletionMessage> BuildChatCompletionMessagesBasedOnHistory()
+    {
+        var anslysisPrompt = String.Format(Template, !string.IsNullOrEmpty(Compressed) ? Compressed : BuildMessages());
+        var mostRecentPrompt = BuildMostRecentMessage();
+        var msgs = new List<ChatCompletionMessage>()
+        {
+            new()
+            {
+                Content = anslysisPrompt,
+                Role = "system"
+            }
+        };
+
+        foreach (var discourseMessage in UserBotDiscourse)
+        {
+            var chatCompletionMessage = new ChatCompletionMessage()
+            {
+                Content = discourseMessage.Value,
+                Role = (discourseMessage.MessageType ?? MessageType.User) == MessageType.User ? "user" : "assistant"
+            };
+            
+            msgs.Add(chatCompletionMessage);
+        }
+        
+        msgs.Add(
+            new()
+            {
+                Content = mostRecentPrompt,
+                Role = "user"
+            }
+        );
+        return msgs;
     }
     
     public void WipeMessages()

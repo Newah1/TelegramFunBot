@@ -174,7 +174,7 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
     string analysis;
     foreach (var analysisService in analyzers)
     {
-        if (command.ToLower().Trim() == analysisService.Command)
+        if (command.ToLower().Trim() == analysisService.Command.Trim().ToLower())
         {
             if (messageText.Contains("requesting analysis"))
             {
