@@ -144,27 +144,33 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         var msgs = BuildChatCompletionMessagesBasedOnHistory();
         string message = String.Empty;
         
-        if (_chatType == ChatTypes.OpenAi)
+        switch (_chatType)
         {
-            var completion = await ChatService.SendChat(msgs.ToArray(), _aiClient,
-                _personality.Temperature ?? _chatSettings.Temperature);
-
-            if (completion == null || completion.Response == null)
+            case ChatTypes.OpenAi:
             {
-                return "";
+                var completion = await ChatService.SendChat(msgs.ToArray(), _aiClient,
+                    _personality.Temperature ?? _chatSettings.Temperature);
+
+                if (completion == null || completion.Response == null)
+                {
+                    return "";
+                }
+
+                message = completion.Response.Choices.FirstOrDefault()?.Message.Content ?? string.Empty;
+                break;
             }
-
-            message = completion.Response.Choices.FirstOrDefault()?.Message.Content ?? string.Empty;
-        } else if (_chatType == ChatTypes.OpenRouter)
-        {
-            var messages = msgs.Select(msg => new Services.Message()
+            case ChatTypes.OpenRouter:
             {
-                Content = msg.Content,
-                Role = msg.Role
-            }).ToList();
-            var completion = await ChatService.SendChat(messages.ToArray(), _aiRouterClient, temperature: _personality.Temperature ?? _chatSettings.Temperature);
+                var messages = msgs.Select(msg => new Services.Message()
+                {
+                    Content = msg.Content,
+                    Role = msg.Role
+                }).ToList();
+                var completion = await ChatService.SendChat(messages.ToArray(), _aiRouterClient, temperature: _personality.Temperature ?? _chatSettings.Temperature);
 
-            message = completion.Choices.FirstOrDefault().Message.Content;
+                message = completion.Choices.FirstOrDefault().Message.Content;
+                break;
+            }
         }
 
         OwnMessages.Add(new Models.Message()
