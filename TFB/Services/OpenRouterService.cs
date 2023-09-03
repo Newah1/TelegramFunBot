@@ -11,12 +11,12 @@ public class OpenRouterService
 {
     public string BaseUrl = "https://openrouter.ai/api/v1/chat/completions";
     private string _apiKey = string.Empty;
-    private string _model;
+    public string Model { get; }
 
     public OpenRouterService (string apiKey, string model = "meta-llama/llama-2-70b-chat")
     {
         _apiKey = apiKey;
-        _model = model;
+        Model = model;
     }
     public async Task<ChatCompletionResponse?> SendRequestAsync(ChatCompletionRequest request)
     {
@@ -32,7 +32,7 @@ public class OpenRouterService
         // Serialize the request model to JSON
         string jsonContent = JsonConvert.SerializeObject(request);
         jsonContent = jsonContent.Replace("\\n", "");
-        request.Model = _model;
+        request.Model = Model;
 
         // Convert the JSON content to a StringContent object
         StringContent content = new StringContent(jsonContent, Encoding.UTF8, "application/json");

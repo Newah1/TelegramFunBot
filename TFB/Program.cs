@@ -45,7 +45,7 @@ var openAiConfigurations = new OpenAIConfigurations
 };
 var openAiClient = new OpenAIClient(openAiConfigurations);
 
-var openRouterService = new OpenRouterService(openRouterSettings.ApiKey);
+var openRouterService = new OpenRouterService(openRouterSettings.ApiKey, openRouterSettings.Model);
 
 var compressorService = new CompressorService(openAiClient);
 
@@ -186,7 +186,7 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
 
             }
 
-            Console.WriteLine($"Handling analysis with ");
+            Console.WriteLine($"Handling analysis with {analysisService.Name}");
             
             // tell the bot to "type"
             var timer = new Timer(state =>
