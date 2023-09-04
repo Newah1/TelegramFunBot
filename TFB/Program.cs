@@ -197,9 +197,15 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
             analysis = await analysisService.Analysis();
             // stop "typing"
             await timer.DisposeAsync();
-            if (string.IsNullOrEmpty(analysis)) continue;
+            if (string.IsNullOrEmpty(analysis))
+            {
+                await bClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: $"Something went wrong getting {analysisService.Name} to respond. Maybe they're sick?",
+                    cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
+                continue;
+            }
 
-            
             // send the text message
             await bClient.SendTextMessageAsync(
                 chatId: chatId,

@@ -56,7 +56,7 @@ public class ChatService
         return result;
     }
     
-    public static async Task<Services.ChatCompletionResponse?> SendChat(Services.Message[] msgs, OpenRouterService client, double temperature = 0.7)
+    public static async Task<Services.ChatCompletionResponse?> SendChat(Services.Message[] msgs, OpenRouterService client, double temperature = 0.7, string model = "meta-llama/llama-2-70b-chat")
     {
         string error;
         Services.ChatCompletionResponse? result;
@@ -64,7 +64,7 @@ public class ChatService
         {
             var chatCompletion = new Services.ChatCompletionRequest()
             {
-                Model = client.Model,
+                Model = (string.IsNullOrEmpty(model) ? client.Model : model),
                 Messages = msgs,
                 Temperature = temperature
             };

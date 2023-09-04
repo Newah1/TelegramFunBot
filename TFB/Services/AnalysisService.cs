@@ -125,7 +125,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         if (preamble)
         {
             format =
-                "Respond directly in character to this message, not to the previous context, but to the most recent message here: " +
+                "Respond directly in character to this message: " +
                 MessageTemplate;
         }
         
@@ -166,9 +166,9 @@ Make sure to keep responses to one paragraph  Here is the context of the message
                     Content = msg.Content,
                     Role = msg.Role
                 }).ToList();
-                var completion = await ChatService.SendChat(messages.ToArray(), _aiRouterClient, temperature: _personality.Temperature ?? _chatSettings.Temperature);
+                var completion = await ChatService.SendChat(messages.ToArray(), _aiRouterClient, temperature: _personality.Temperature ?? _chatSettings.Temperature, _personality.Model);
 
-                message = completion.Choices.FirstOrDefault().Message.Content;
+                message = completion?.Choices?.FirstOrDefault()?.Message.Content ?? "";
                 break;
             }
         }

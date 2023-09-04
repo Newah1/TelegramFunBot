@@ -42,7 +42,7 @@ public class PersonalitySheetsService
 
     public List<Personality> LoadPersonalities()
     {
-        var range = "A2:D";
+        var range = "A2:E";
         
         SpreadsheetsResource.ValuesResource.GetRequest request =
             _service.Spreadsheets.Values.Get(_spreadsheetId, range);
@@ -64,7 +64,8 @@ public class PersonalitySheetsService
                     {
                         Command = row[0].ToString(),
                         PersonalityDescription = row[1].ToString(),
-                        Name = row[2].ToString()
+                        Name = row[2].ToString(),
+                        Model = row.ElementAtOrDefault(4)?.ToString() ?? string.Empty
                     };
                     
                     // try to get the temp

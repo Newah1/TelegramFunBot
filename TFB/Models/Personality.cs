@@ -6,4 +6,5 @@ public class Personality
     public string Command { get; set; }
     public string PersonalityDescription { get; set; }
     public double? Temperature { get; set; } = null;
+    public string Model { get; set; }
 }
