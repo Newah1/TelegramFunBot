@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using System.Text.RegularExpressions;
 using TFB;
 using TFB.Models;
 using Microsoft.Extensions.Configuration;
@@ -7,8 +8,10 @@ using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Configurations;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 using TFB.Services;
 using MessageType = TFB.Models.MessageType;
 
@@ -68,11 +71,55 @@ var lastTimeRanSpreadsheet = DateTime.Now;
 
 var botClient = TelegramService.SetupClient(telegramSettings);
 
+var botHandlerService = new BotHandlerService(
+    analyzers, botClient, personalitySheetService, 
+    null, personalities, openAiClient, 
+    openRouterService, chatSettings, compressorService);
+
 //botClient.OnUpdateActions.Add(HandleUpdateAsync);
 botClient.OnUpdateActions.Add(HandleAnalysis);
+botClient.CallBackQueryActions.Add(CallbackQuery);
 
 await botClient.StartReceiving();
 
+
+async void CallbackQuery(ITelegramBotClient bClient, Update update, CancellationToken cancellationToken)
+{
+    var messageText = update.CallbackQuery?.Data ?? "";
+    var chatId = update.CallbackQuery?.Message?.Chat.Id ?? 0;
+    string pattern = @"/(\w+)\b.*";
+
+    Match match = Regex.Match(messageText, pattern);
+
+    string command = string.Empty;
+    if (match.Success)
+    {
+        command = match.Groups[1].Value;
+        command = "/" + command;
+        Console.WriteLine("Extracted word: " + command);
+    }
+    
+    var message1 = new TFB.Models.Message()
+    {
+        Author = update.Message?.From?.FirstName ?? "",
+        DatePosted = update.Message?.Date ?? DateTime.Now,
+        Value = messageText,
+        MessageType = MessageType.User
+    };
+
+    try
+    {
+        await bClient.EditMessageTextAsync(chatId, update.CallbackQuery?.Message.MessageId ?? 0,
+            update.CallbackQuery.Message.Text, null);
+    }
+    catch (ApiRequestException e)
+    {
+        Console.WriteLine(e.Message);
+        
+    }
+
+    await botHandlerService.HandleUpdate(chatId, command, messageText, message1, cancellationToken, update.Message ?? new Telegram.Bot.Types.Message());
+}
 
 async void HandleAnalysis(ITelegramBotClient bClient, Update update, CancellationToken cancellationToken)
 {
@@ -102,148 +149,9 @@ async void HandleAnalysis(ITelegramBotClient bClient, Update update, Cancellatio
         MessageType = MessageType.User
     };
 
-    foreach (var analysisService in analyzers)
-    {
-        analysisService.AddMessage(message1);
-        analysisService.CombinedMessages.Add(message1);
-    }
+    botHandlerService.SetTelegramBotClient(bClient);
+    await botHandlerService.HandleUpdate(chatId, command, messageText, message1, cancellationToken, message);
 
-    if (command == "/wipe_context")
-    {
-        foreach (var analysisService in analyzers)
-        {
-            analysisService.WipeMessages();
-        }
-        await bClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: $"Wiped {analyzers.Count.ToString()} personalities.",
-            cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
-    } else if (command == "/report")
-    {
-        await bClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: new ReportService(analyzers).GenerateReport(),
-            cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
-    }
-    
-    if ((DateTime.Now - lastTimeRanSpreadsheet).TotalSeconds > 60)
-    {
-        var refreshValues = personalitySheetService.LoadPersonalities();
-        var personalitiesRefreshed = new List<Personality>();
-        foreach (var personality in personalities)
-        {
-            Personality? personalityToAdd;
-            var newCommands = refreshValues.Select(e => e.Command).ToList();
-            personalityToAdd = newCommands.Contains(personality.Command) ? refreshValues.FirstOrDefault(rf => rf.Command == personality.Command) : personality;
-            if(personalityToAdd != null) {
-                personalitiesRefreshed.Add(personalityToAdd);
-            }
-        }
-
-        var newPersonalities = refreshValues
-            .Where(r => !personalitiesRefreshed.Select(e => e.Command).Contains(r.Command)).ToList();
-        
-        personalitiesRefreshed.AddRange(
-                newPersonalities
-            );
-
-        personalities = personalitiesRefreshed;
-
-        foreach (var analysisService in analyzers)
-        {
-            var matchingPersonality = personalities.FirstOrDefault(p => p.Command == analysisService.Command);
-            if (matchingPersonality != null)
-            {
-                analysisService.Template = matchingPersonality.PersonalityDescription;
-                analysisService.Name = matchingPersonality.Name;
-                analysisService.SetPersonality(matchingPersonality);
-            }
-        }
-
-        foreach (var personality in newPersonalities)
-        {
-            analyzers.Add(
-                AnalysisService.GetAnalyzer(personality, openAiClient, chatSettings, openRouterService)
-                );
-        }
-        
-        lastTimeRanSpreadsheet = DateTime.Now;
-    }
-    
-    Console.WriteLine($"Got a message from {message.From?.FirstName} with contents: {messageText}");
-    string analysis;
-    foreach (var analysisService in analyzers)
-    {
-        if (command.ToLower().Trim() == analysisService.Command.Trim().ToLower())
-        {
-            if (messageText.Contains("requesting analysis"))
-            {
-                await bClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "I know this: " + analysisService.Compressed ?? "No context.",
-                        cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
-                return;
-
-            }
-
-            Console.WriteLine($"Handling analysis with {analysisService.Name}");
-            
-            // tell the bot to "type"
-            var timer = new Timer(state =>
-            {
-                bClient.SendChatActionAsync(chatId, ChatAction.Typing, message.ReplyToMessage?.MessageId);
-            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
-            
-            analysis = await analysisService.Analysis();
-            // stop "typing"
-            await timer.DisposeAsync();
-            if (string.IsNullOrEmpty(analysis))
-            {
-                await bClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: $"Something went wrong getting {analysisService.Name} to respond. Maybe they're sick?",
-                    cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
-                continue;
-            }
-
-            // send the text message
-            await bClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: analysis,
-                cancellationToken: cancellationToken, replyToMessageId: message.ReplyToMessage?.MessageId);
-
-            var compressionResponse = await compressorService.RequestCompression(compressorService.BuildBulkCompression(new string[]{ analysisService.BuildCombinedMessages() }));
-
-            if (compressionResponse.Any(cr => cr.Success))
-            {
-                analysisService.Compressed = compressionResponse.FirstOrDefault().Compressed;
-            }
-
-            var latestMessage = new TFB.Models.Message()
-            {
-                Author = analysisService.Name,
-                DatePosted = DateTime.Now,
-                Value = analysis,
-                MessageType = MessageType.Bot
-            };
-            analysisService.UserBotDiscourse.Add(message1);
-            analysisService.UserBotDiscourse.Add(latestMessage);
-            analysisService.CombinedMessages.Add(latestMessage);
-
-            // give other analyzers your most recent message
-            foreach (var otherAnalyzers in analyzers.Where(a => a != analysisService).ToList())
-            {
-                Console.WriteLine($"Giving {otherAnalyzers.Name} the most recent message [{analysis.Substring(0, 10)}...]");
-                if (compressionResponse.Any(cr => cr.Success))
-                {
-                    otherAnalyzers.Compressed = compressionResponse.FirstOrDefault().Compressed;
-                }
-
-                otherAnalyzers.AddMessage(latestMessage);
-                otherAnalyzers.CombinedMessages.Add(latestMessage);
-            }
-        }
-    }
 }
 
 async void HandleUpdateAsync(ITelegramBotClient bClient, Update update, CancellationToken cancellationToken)

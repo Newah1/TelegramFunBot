@@ -4,7 +4,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TFB.Models;
 
-namespace TFB;
+namespace TFB.Services;
 
 public class TelegramService
 {
@@ -12,6 +12,9 @@ public class TelegramService
     private readonly ReceiverOptions _options;
 
     public List<Action<ITelegramBotClient, Update, CancellationToken>> OnUpdateActions { get; set; } =
+        new List<Action<ITelegramBotClient, Update, CancellationToken>>();
+
+    public List<Action<ITelegramBotClient, Update, CancellationToken>> CallBackQueryActions { get; set; } =
         new List<Action<ITelegramBotClient, Update, CancellationToken>>();
 
     private TelegramService(TelegramBotClient botClient,ReceiverOptions options)
@@ -23,24 +26,46 @@ public class TelegramService
     public async Task StartReceiving()
     {
         await _botClient.ReceiveAsync(
-            updateHandler:HandleUpdates, 
+            updateHandler:HandleUpdates,
             pollingErrorHandler: (client, exception, arg3) =>
             {
-                Console.WriteLine($"Test {exception.Message}");
+                Console.WriteLine($"Telegram error... {exception.Message}");
                 return Task.CompletedTask;
             },
             _options
         );
+
+        
     }
 
     private Task HandleUpdates(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
-        foreach (var onUpdateAction in OnUpdateActions)
+        if (update.Type == UpdateType.CallbackQuery)
         {
-            onUpdateAction.Invoke(botClient, update, cancellationToken);
+            foreach (var callBackQueryAction in CallBackQueryActions)
+            {
+                callBackQueryAction.Invoke(botClient, update, cancellationToken);
+            }
+        }
+        else
+        {
+            foreach (var onUpdateAction in OnUpdateActions)
+            {
+                onUpdateAction.Invoke(botClient, update, cancellationToken);
+            }
         }
 
         return Task.CompletedTask;
+    }
+
+    public async Task<Telegram.Bot.Types.Message?> Send(long chatId, string message, int? replyToId)
+    {
+        var sendTextMessageAsync = await _botClient.SendTextMessageAsync(
+            chatId: chatId,
+            text: message,
+            cancellationToken: new CancellationToken(), replyToMessageId: replyToId ?? 0);
+
+        return sendTextMessageAsync;
     }
 
     public static TelegramService SetupClient(TelegramSettings telegramSettings)

@@ -2,11 +2,9 @@ using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Clients.Completions.Exceptions;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions.Exceptions;
-using Standard.AI.OpenAI.Models.Services.Foundations.Completions;
 using TFB.Models;
-using TFB.Services;
 
-namespace TFB;
+namespace TFB.Services;
 
 public class ChatService
 {

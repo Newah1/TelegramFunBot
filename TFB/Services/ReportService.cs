@@ -42,7 +42,7 @@ Command: {4}
                 (analysisService._personality.Temperature ?? 0.8).ToString(),
                 analysisService.Messages.Count.ToString(),
                 analysisService.Command
-                );
+            );
         }
 
         return reportString;
