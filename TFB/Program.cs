@@ -51,6 +51,7 @@ var openAiClient = new OpenAIClient(openAiConfigurations);
 var openRouterService = new OpenRouterService(openRouterSettings.ApiKey, openRouterSettings.Model);
 
 var compressorService = new CompressorService(openAiClient);
+var choicesService = new ChoicesService(openAiClient);
 
 var personalities = new List<Personality>();
 configurationBuilder.GetSection("Personalities").Bind(personalities);
@@ -74,7 +75,7 @@ var botClient = TelegramService.SetupClient(telegramSettings);
 var botHandlerService = new BotHandlerService(
     analyzers, botClient, personalitySheetService, 
     null, personalities, openAiClient, 
-    openRouterService, chatSettings, compressorService);
+    openRouterService, chatSettings, compressorService, choicesService);
 
 //botClient.OnUpdateActions.Add(HandleUpdateAsync);
 botClient.OnUpdateActions.Add(HandleAnalysis);
@@ -109,6 +110,8 @@ async void CallbackQuery(ITelegramBotClient bClient, Update update, Cancellation
 
     try
     {
+        //await bClient.SendTextMessageAsync(chatId, $"Chose {update.CallbackQuery.Message.Text}",
+          //  update.CallbackQuery.Message.Text, null);
         await bClient.EditMessageTextAsync(chatId, update.CallbackQuery?.Message.MessageId ?? 0,
             update.CallbackQuery.Message.Text, null);
     }

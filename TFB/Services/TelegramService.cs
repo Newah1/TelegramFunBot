@@ -2,6 +2,7 @@ using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 using TFB.Models;
 
 namespace TFB.Services;
@@ -58,14 +59,25 @@ public class TelegramService
         return Task.CompletedTask;
     }
 
-    public async Task<Telegram.Bot.Types.Message?> Send(long chatId, string message, int? replyToId)
+    public async Task<Telegram.Bot.Types.Message?> Send(long chatId, string message, int? replyToId, InlineKeyboardMarkup? inlineKeyboardMarkup = null)
     {
-        var sendTextMessageAsync = await _botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: message,
-            cancellationToken: new CancellationToken(), replyToMessageId: replyToId ?? 0);
+        try
+        {
+            var sendTextMessageAsync = await _botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: message,
+                replyMarkup: inlineKeyboardMarkup,
+                cancellationToken: new CancellationToken(), replyToMessageId: replyToId ?? 0);
+            
 
-        return sendTextMessageAsync;
+            return sendTextMessageAsync;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+
+        return new Telegram.Bot.Types.Message();
     }
 
     public static TelegramService SetupClient(TelegramSettings telegramSettings)
