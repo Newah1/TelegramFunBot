@@ -44,7 +44,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
 
     public static AnalysisService GetAnalyzer(Personality personality, OpenAIClient aiClient, ChatSettings chatSettings, OpenRouterService openRouterService)
     {
-        var analyzer = new AnalysisService(aiClient, chatSettings, personality, ChatTypes.OpenRouter, openRouterService);
+        var analyzer = new AnalysisService(aiClient, chatSettings, personality, ChatTypes.OpenAi, openRouterService);
         analyzer.Template = personality.PersonalityDescription;
         analyzer.Command = personality.Command;
         analyzer.Name = personality.Name;

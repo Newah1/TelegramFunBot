@@ -110,6 +110,8 @@ async void CallbackQuery(ITelegramBotClient bClient, Update update, Cancellation
 
     try
     {
+
+        await botClient.Send(chatId, $"Sending message {messageText}", null);
         //await bClient.SendTextMessageAsync(chatId, $"Chose {update.CallbackQuery.Message.Text}",
           //  update.CallbackQuery.Message.Text, null);
         await bClient.EditMessageTextAsync(chatId, update.CallbackQuery?.Message.MessageId ?? 0,

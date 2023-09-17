@@ -20,7 +20,7 @@ public class ChatService
             {
                 Request = new Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions.ChatCompletionRequest
                 {
-                    Model = "gpt-3.5-turbo-0613",
+                    Model = "gpt-3.5-turbo",
                     Messages = msgs,
                     Temperature = temperature,
                     MaxTokens = 3000
