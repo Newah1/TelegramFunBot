@@ -52,6 +52,7 @@ public class OpenRouterService
         }
         else
         {
+            string responseBody = await httpResponse.Content.ReadAsStringAsync();
             Console.WriteLine($"Request failed with status code: {httpResponse.StatusCode}");
         }
 
@@ -64,7 +65,7 @@ public class OpenRouterService
 
 public class ChatCompletionRequest
 {
-    [JsonProperty("max_tokens")] public int MaxTokens { get; set; } = 8000;
+    [JsonProperty("max_tokens")] public int MaxTokens { get; set; } = 3000;
     [JsonProperty("temperature")] 
     public double Temperature { get; set; } = 0.80;
     [JsonProperty("transforms")]

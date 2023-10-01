@@ -61,6 +61,12 @@ public class TelegramService
 
     public async Task<Telegram.Bot.Types.Message?> Send(long chatId, string message, int? replyToId, InlineKeyboardMarkup? inlineKeyboardMarkup = null)
     {
+
+        if (message.Length > 4096)
+        {
+            message = message.Substring(0, 4094); // max telegram len
+        }
+        
         try
         {
             var sendTextMessageAsync = await _botClient.SendTextMessageAsync(

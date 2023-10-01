@@ -140,14 +140,17 @@ public class BotHandlerService
 
                 
                 analysis = await analysisService.Analysis();
-                
-                // get choices
-                var choices = await _choicesService.GetPotentialChoices(new ChoicesRequest()
+                ChoicesResponse choices = null;
+                if (analysis.Length > 0)
                 {
-                    Author = analysisService.Name,
-                    Message = analysis,
-                    Command = analysisService.Command
-                });
+                    // get choices
+                    choices = await _choicesService.GetPotentialChoices(new ChoicesRequest()
+                    {
+                        Author = analysisService.Name,
+                        Message = analysis,
+                        Command = analysisService.Command
+                    });
+                }
 
                 InlineKeyboardMarkup? inlineKeyboard = null;
                 if (choices != null && choices.Choices != null && choices.Choices.Any())

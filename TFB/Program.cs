@@ -11,7 +11,6 @@ using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
 using TFB.Services;
 using MessageType = TFB.Models.MessageType;
 
@@ -102,7 +101,7 @@ async void CallbackQuery(ITelegramBotClient bClient, Update update, Cancellation
     
     var message1 = new TFB.Models.Message()
     {
-        Author = update.Message?.From?.FirstName ?? "",
+        Author = update.CallbackQuery?.From?.FirstName ?? "",
         DatePosted = update.Message?.Date ?? DateTime.Now,
         Value = messageText,
         MessageType = MessageType.User
@@ -111,7 +110,7 @@ async void CallbackQuery(ITelegramBotClient bClient, Update update, Cancellation
     try
     {
 
-        await botClient.Send(chatId, $"Sending message {messageText}", null);
+        await botClient.Send(chatId, $"{update.CallbackQuery?.From?.FirstName ?? ""} is sending message {messageText}", null);
         //await bClient.SendTextMessageAsync(chatId, $"Chose {update.CallbackQuery.Message.Text}",
           //  update.CallbackQuery.Message.Text, null);
         await bClient.EditMessageTextAsync(chatId, update.CallbackQuery?.Message.MessageId ?? 0,
