@@ -61,6 +61,11 @@ public class PersonalityService : IPersonalityService
             query += " LEFT JOIN MessageHistories mh ON mh.PersonalityId=p.PersonalityId";
         }
         
+        if (request.PersonalityId != null)
+        {
+            query += " WHERE p.PersonalityId=@PersonalityId";
+        }
+        
         if (request.Limit != null)
         {
             query += $" LIMIT {request.Limit}";
@@ -75,12 +80,19 @@ public class PersonalityService : IPersonalityService
         {
             query += " ORDER BY mh.DateCreated ASC";
         }
+
+        object param = new { };
+
+        if (request.PersonalityId != null)
+        {
+            param = new { PersonalityId = request.PersonalityId };
+        }
         
         using var connection = _databaseService.Connect();
 
         var personalities = new Dictionary<int, Personality>();
         
-        await connection.QueryAsync<Models.Personality, MessageHistory, Models.Personality>(query,
+        await connection.QueryAsync<Personality, MessageHistory, Personality>(query,
             (personality, messageHistory) =>
             {
                 if (!personalities.ContainsKey(personality.PersonalityId))
@@ -96,7 +108,7 @@ public class PersonalityService : IPersonalityService
                 }
 
                 return personality;
-            }, splitOn: "MessageHistoryId" );
+            }, splitOn: "MessageHistoryId", param: param);
 
         return personalities.Values;
     }
