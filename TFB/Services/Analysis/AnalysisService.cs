@@ -1,23 +1,25 @@
 using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
-using Telegram.Bot.Types;
+using TFB.DTOs;
+using TFB.DTOs.Settings;
 using TFB.Models;
-using TFB.Services;
+using TFB.Services.OpenRouter;
+using Message = TFB.DTOs.Message;
+using Personality = TFB.DTOs.Personality;
 
-namespace TFB;
+namespace TFB.Services.Analysis;
 
 public class AnalysisService
 {
-    public List<Models.Message> Messages = new List<Models.Message>();
-    public List<Models.Message> OwnMessages = new List<Models.Message>();
-    public List<Models.Message> UserBotDiscourse = new List<Models.Message>();
-    public List<Models.Message> CombinedMessages = new List<Models.Message>();
-    public Personality _personality;
+    public List<DTOs.Message> Messages;
+    public List<DTOs.Message> OwnMessages;
+    public List<DTOs.Message> UserBotDiscourse;
+    public List<DTOs.Message> CombinedMessages;
     
     private OpenAIClient _aiClient;
-    private OpenRouterService _aiRouterClient;
+    private IOpenRouterService _aiRouterClient;
     private ChatSettings _chatSettings;
-    private ChatTypes _chatType;
+    
     public string Command = "/batman";
     public string Name = "Batman";
     public string Compressed = "";
@@ -28,30 +30,24 @@ Make sure to keep responses to one paragraph  Here is the context of the message
 
     public string MessageTemplate = "Author: {0} \n Message: {1} \n Date Posted {2} \n";
     
-    public AnalysisService(OpenAIClient aiClient, ChatSettings chatSettings, Personality personality, ChatTypes chatType, OpenRouterService aiRouterClient)
+    public AnalysisService(OpenAIClient aiClient, ChatSettings chatSettings, IOpenRouterService aiRouterClient)
     {
         _aiClient = aiClient;
         _chatSettings = chatSettings;
-        _personality = personality;
-        _chatType = chatType;
         _aiRouterClient = aiRouterClient;
+
+        Messages = new List<Message>();
+        OwnMessages = new List<Message>();
+        CombinedMessages = new List<Message>();
+        UserBotDiscourse = new List<Message>();
     }
 
-    public void SetPersonality(Personality personality)
+    public bool MatchesCommand(string command)
     {
-        this._personality = personality;
+        return command.ToLower().Trim() == Command.Trim().ToLower();
     }
 
-    public static AnalysisService GetAnalyzer(Personality personality, OpenAIClient aiClient, ChatSettings chatSettings, OpenRouterService openRouterService)
-    {
-        var analyzer = new AnalysisService(aiClient, chatSettings, personality, ChatTypes.OpenRouter, openRouterService);
-        analyzer.Template = personality.PersonalityDescription;
-        analyzer.Command = personality.Command;
-        analyzer.Name = personality.Name;
-        return analyzer;
-    }
-
-    public void AddMessage(Models.Message message)
+    public void AddMessage(DTOs.Message message)
     {
         if (Messages.Count >= 100)
         {
@@ -81,17 +77,17 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         return outputString;
     }
 
-    public string BuildCombinedMessages()
+    public static string BuildCombinedMessages(List<Message> messages, string command, string messageTemplate)
     {
         var outputString = "";
-        for(var i = 0; i < CombinedMessages.Count; i++)
+        for(var i = 0; i < messages.Count; i++)
         {
-            var message = CombinedMessages[i];
-            if (message.Value.ToLower() == Command)
+            var message = messages[i];
+            if (message.Value.ToLower() == command)
             {
                 continue;
             }
-            outputString += String.Format(MessageTemplate, message.Author, message.Value,
+            outputString += String.Format(messageTemplate, message.Author, message.Value,
                 message.DatePosted.ToString("f"));
         }
 
@@ -139,21 +135,24 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         return outputString;
     }
     
-    public async Task<string> Analysis()
+    public async Task<AnalysisResponse> Analysis(AnalysisRequest request)
     {
-        var msgs = BuildChatCompletionMessagesBasedOnHistory();
+        AnalysisResponse response = new AnalysisResponse();
+
+        var msgs = BuildChatCompletionMessagesBasedOnHistory(request.Personality);
+        response.ChatCompletionChoices = msgs;
         string message = String.Empty;
         
-        switch (_chatType)
+        switch (request.ChatTypes)
         {
             case ChatTypes.OpenAi:
             {
                 var completion = await ChatService.SendChat(msgs.ToArray(), _aiClient,
-                    _personality.Temperature ?? _chatSettings.Temperature);
+                    request.Personality.Temperature ?? _chatSettings.Temperature);
 
                 if (completion == null || completion.Response == null)
                 {
-                    return "";
+                    return response;
                 }
 
                 message = completion.Response.Choices.FirstOrDefault()?.Message.Content ?? string.Empty;
@@ -161,67 +160,61 @@ Make sure to keep responses to one paragraph  Here is the context of the message
             }
             case ChatTypes.OpenRouter:
             {
-                var messages = msgs.Select(msg => new Services.Message()
+                var messages = msgs.Select(msg => new Services.OpenRouter.Message()
                 {
                     Content = msg.Content,
                     Role = msg.Role
                 }).ToList();
-                var completion = await ChatService.SendChat(messages.ToArray(), _aiRouterClient, temperature: _personality.Temperature ?? _chatSettings.Temperature, _personality.Model);
+                var completion = await ChatService.SendChat(messages.ToArray(), _aiRouterClient, temperature: request.Personality.Temperature ?? _chatSettings.Temperature, request.Personality.Model);
 
                 message = completion?.Choices?.FirstOrDefault()?.Message.Content ?? "";
                 break;
             }
         }
 
-        OwnMessages.Add(new Models.Message()
+        OwnMessages.Add(new DTOs.Message()
         {
             Value = message,
             DatePosted = DateTime.Now
         });
-        
-        return message;
+
+        response.Message = message;
+        if (!string.IsNullOrEmpty(message))
+        {
+            response.Success = true;
+        }
+
+        return response;
     }
 
-    private List<ChatCompletionMessage> BuildChatCompletionMessagesBasedOnHistory()
+    private List<ChatCompletionMessage> BuildChatCompletionMessagesBasedOnHistory(Personality personality)
     {
-        var anslysisPrompt = String.Format(Template, !string.IsNullOrEmpty(Compressed) ? Compressed : BuildMessages());
-        var mostRecentPrompt = BuildMostRecentMessage();
-        var msgs = new List<ChatCompletionMessage>()
+        var msgs = new List<ChatCompletionMessage>();
+        
+        msgs.Add(new ChatCompletionMessage()
         {
-            new()
-            {
-                Content = anslysisPrompt,
-                Role = "system"
-            }
-        };
-
-        foreach (var discourseMessage in UserBotDiscourse)
+            Role = "system",
+            Content = String.Format(personality.PersonalityDescription, "")
+        });
+        
+        foreach (var message in personality.MessageHistory)
         {
-            var chatCompletionMessage = new ChatCompletionMessage()
+            msgs.Add(new ChatCompletionMessage()
             {
-                Content = discourseMessage.Value,
-                Role = (discourseMessage.MessageType ?? MessageType.User) == MessageType.User ? "user" : "assistant"
-            };
-            
-            msgs.Add(chatCompletionMessage);
+                Content = message.Value,
+                Role = message.MessageType == MessageType.Bot ? "assistant" : "user"
+            });
         }
         
-        msgs.Add(
-            new()
-            {
-                Content = mostRecentPrompt,
-                Role = "user"
-            }
-        );
         return msgs;
     }
     
     public void WipeMessages()
     {
-        Messages = new List<Models.Message>();
-        OwnMessages = new List<Models.Message>();
-        CombinedMessages = new List<Models.Message>();
-        UserBotDiscourse = new List<Models.Message>();
+        Messages = new List<DTOs.Message>();
+        OwnMessages = new List<DTOs.Message>();
+        CombinedMessages = new List<DTOs.Message>();
+        UserBotDiscourse = new List<DTOs.Message>();
         Compressed = "";
     }
 }

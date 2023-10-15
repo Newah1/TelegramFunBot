@@ -1,4 +1,4 @@
-namespace TFB;
+namespace TFB.Services;
 
 public class TokenEstimatorService
 {

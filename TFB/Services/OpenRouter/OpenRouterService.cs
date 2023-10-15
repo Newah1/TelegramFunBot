@@ -1,21 +1,22 @@
-namespace TFB.Services;
-
-using System;
-using System.Net.Http;
 using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using TFB.DTOs.Settings;
 
-public class OpenRouterService
+namespace TFB.Services.OpenRouter;
+
+public class OpenRouterService : IOpenRouterService
 {
+    private readonly ILogger<IOpenRouterService> _logger;
     public string BaseUrl = "https://openrouter.ai/api/v1/chat/completions";
     private string _apiKey = string.Empty;
-    public string Model { get; }
+    public string Model { get; internal set; }
 
-    public OpenRouterService (string apiKey, string model = "meta-llama/llama-2-70b-chat")
+    public OpenRouterService (OpenRouterSettings openRouterSettings, ILogger<IOpenRouterService> logger)
     {
-        _apiKey = apiKey;
-        Model = model;
+        _logger = logger;
+        _apiKey = openRouterSettings.ApiKey;
+        Model = openRouterSettings.Model;
     }
     public async Task<ChatCompletionResponse?> SendRequestAsync(ChatCompletionRequest request)
     {
@@ -52,51 +53,13 @@ public class OpenRouterService
         }
         else
         {
+            _logger.LogError($"Error getting response from OpenRouter {httpResponse.StatusCode.ToString()}");
             string responseBody = await httpResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"Request failed with status code: {httpResponse.StatusCode}");
+            _logger.LogError($"Error getting response from OpenRouter {responseBody}");
         }
 
 
         return null;
     }
 
-}
-
-
-public class ChatCompletionRequest
-{
-    [JsonProperty("max_tokens")] public int MaxTokens { get; set; } = 3000;
-    [JsonProperty("temperature")] 
-    public double Temperature { get; set; } = 0.80;
-    [JsonProperty("transforms")]
-    public string[] Transforms { get; set; }
-    [JsonProperty("model")]
-    public string Model { get; set; }
-    [JsonProperty("messages")]
-    public Message[] Messages { get; set; }
-
-}
-
-public class ChatCompletionResponse
-{
-    [JsonProperty("choices")]
-    public Choice[] Choices { get; set; }
-    [JsonProperty("model")]
-    public string Model { get; set; }
-}
-
-public class Choice
-{
-    [JsonProperty("finish_reason")]
-    public string FinishReason { get; set; }
-    [JsonProperty("message")]
-    public Message Message { get; set; }
-}
-
-public class Message
-{
-    [JsonProperty("role")]
-    public string Role { get; set; }
-    [JsonProperty("content")]
-    public string Content { get; set; }
 }

@@ -1,4 +1,4 @@
-namespace TFB.Models;
+namespace TFB.DTOs.Settings;
 
 public class TelegramSettings
 {

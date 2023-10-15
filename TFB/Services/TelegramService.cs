@@ -3,7 +3,10 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using TFB.Models;
+using TFB.DTOs.Settings;
+using TFB.Services.BotHandler;
+using Message = Telegram.Bot.Types.Message;
+using MessageType = TFB.DTOs.MessageType;
 
 namespace TFB.Services;
 
@@ -12,13 +15,13 @@ public class TelegramService
     private readonly TelegramBotClient _botClient;
     private readonly ReceiverOptions _options;
 
-    public List<Action<ITelegramBotClient, Update, CancellationToken>> OnUpdateActions { get; set; } =
-        new List<Action<ITelegramBotClient, Update, CancellationToken>>();
+    public List<Action<BotHandlerRequest, CancellationToken>> OnUpdateActions { get; set; } =
+        new List<Action<BotHandlerRequest, CancellationToken>>();
 
-    public List<Action<ITelegramBotClient, Update, CancellationToken>> CallBackQueryActions { get; set; } =
-        new List<Action<ITelegramBotClient, Update, CancellationToken>>();
+    public List<Action<BotHandlerRequest, CancellationToken>> CallBackQueryActions { get; set; } =
+        new List<Action<BotHandlerRequest, CancellationToken>>();
 
-    private TelegramService(TelegramBotClient botClient,ReceiverOptions options)
+    private TelegramService(TelegramBotClient botClient, ReceiverOptions options)
     {
         _botClient = botClient;
         _options = options;
@@ -41,18 +44,50 @@ public class TelegramService
 
     private Task HandleUpdates(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        if (update.Message is not { } message)
+            return Task.CompletedTask;
+        
+        var messageText = update.Message?.Text ?? "";
+        var command = "";
+        
+        if (update.Message?.Entities?.Length > 0 
+            && update.Message.Entities.FirstOrDefault(type => type.Type == MessageEntityType.BotCommand) != null)
+        {
+            command = update.Message?.EntityValues?.FirstOrDefault() ?? "";
+        }
+
+        var chatId = message?.Chat.Id ?? 0;
+
+        var dtoMessage = new TFB.DTOs.Message()
+        {
+            Author = message?.From?.FirstName ?? "Default*User",
+            DatePosted = message?.Date ?? DateTime.Now,
+            Value = messageText,
+            MessageType = MessageType.User
+        };
+
+        var botHandlerRequest = new BotHandlerRequest()
+        {
+            CancellationToken = cancellationToken,
+            ChatId = chatId,
+            Command = command,
+            Message = dtoMessage,
+            MessageText = messageText,
+            TelegramMessage = update.Message ?? new Message()
+        };
+        
         if (update.Type == UpdateType.CallbackQuery)
         {
             foreach (var callBackQueryAction in CallBackQueryActions)
             {
-                callBackQueryAction.Invoke(botClient, update, cancellationToken);
+                callBackQueryAction.Invoke(botHandlerRequest, cancellationToken);
             }
         }
         else
         {
             foreach (var onUpdateAction in OnUpdateActions)
             {
-                onUpdateAction.Invoke(botClient, update, cancellationToken);
+                onUpdateAction.Invoke(botHandlerRequest, cancellationToken);
             }
         }
 

@@ -1,3 +1,6 @@
+using TFB.Services;
+using TFB.Services.Analysis;
+
 namespace TFB;
 
 public class ReportService
@@ -39,7 +42,7 @@ Command: {4}
             reportString += string.Format(_reportTemplate, 
                 analysisService.Name, 
                 $"{truncated}...",
-                (analysisService._personality.Temperature ?? 0.8).ToString(),
+                "no temp",
                 analysisService.Messages.Count.ToString(),
                 analysisService.Command
             );

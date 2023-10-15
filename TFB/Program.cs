@@ -1,18 +1,9 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using System.Text.RegularExpressions;
 using TFB;
-using TFB.Models;
 using Microsoft.Extensions.Configuration;
-using Standard.AI.OpenAI.Clients.OpenAIs;
-using Standard.AI.OpenAI.Models.Configurations;
-using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
-using Telegram.Bot;
-using Telegram.Bot.Exceptions;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
-using TFB.Services;
-using MessageType = TFB.Models.MessageType;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 Console.WriteLine("Hello, World!");
 
@@ -21,20 +12,22 @@ IConfiguration configurationBuilder = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
     .Build();
 
-var chatSettings = new ChatSettings();
-configurationBuilder.GetSection("ChatSettings").Bind(chatSettings);
-var telegramSettings = new TelegramSettings();
-configurationBuilder.GetSection("TelegramSettings").Bind(telegramSettings);
-var generalSettings = new GeneralSettings();
-configurationBuilder.GetSection("GeneralSettings").Bind(generalSettings);
+HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 
-var sheetsSettings = new SheetsSettings();
-configurationBuilder.GetSection("SheetsSettings").Bind(sheetsSettings);
+//builder.Services.AddSingleton(configurationBuilder);
 
-var openRouterSettings = new OpenRouterSettings();
-configurationBuilder.GetSection("OpenRouterSettings").Bind(openRouterSettings);
+Startup.GetConfigurations(builder.Services, configurationBuilder);
+
+await Startup.ConfigureServices(builder.Services);
+
+builder.Services.AddHostedService<Startup>();
+
+var app = builder.Build();
+
+await app.RunAsync();
 
 
+/*
 var personalitySheetService = new PersonalitySheetsService(sheetsSettings);
 var personalitiesFromSheet = personalitySheetService.LoadPersonalities();
 
@@ -214,4 +207,4 @@ async void HandleUpdateAsync(ITelegramBotClient bClient, Update update, Cancella
 
 
 Console.ReadLine();
-Console.WriteLine("ending");
+Console.WriteLine("ending");*/

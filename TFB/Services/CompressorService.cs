@@ -1,15 +1,18 @@
+using Microsoft.Extensions.Logging;
 using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
 
-namespace TFB.Models;
+namespace TFB.Services;
 
 public class CompressorService
 {
     private readonly OpenAIClient _client;
+    private readonly ILogger<CompressorService> _logger;
 
-    public CompressorService(OpenAIClient client)
+    public CompressorService(OpenAIClient client, ILogger<CompressorService> logger)
     {
         _client = client;
+        _logger = logger;
     }
 
     public List<ChatCompletionMessage> BuildBulkCompression(string[] contexts)
@@ -30,11 +33,13 @@ public class CompressorService
 
     public async Task<List<CompressionResponse>> RequestCompression(List<ChatCompletionMessage> messages)
     {
+        _logger.LogDebug("Beginning compression");
         var responses = messages.Select(message => new CompressionResponse()
         {
             Uncompressed = message.Content,
             TokensBefore = TokenEstimatorService.EstimateTokens(message.Content)
         }).ToList();
+        _logger.LogDebug($"Tokens before: {responses.FirstOrDefault()?.TokensBefore.ToString() ?? 0.ToString()}");
         
         var chatCompletion = new ChatCompletion
         {
@@ -58,12 +63,13 @@ public class CompressorService
                 var content = result.Response.Choices[i].Message.Content;
                 responses[i].Compressed = content;
                 responses[i].TokensAfter = TokenEstimatorService.EstimateTokens(content);
+                _logger.LogDebug($"Tokens after: {responses[i].TokensAfter.ToString()}");
                 responses[i].Success = true;
             }
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            _logger.LogError($"Error ", e);
         }
 
         return responses;

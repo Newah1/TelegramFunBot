@@ -1,7 +1,8 @@
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
-using TFB.Models;
+using TFB.DTOs;
+using TFB.DTOs.Settings;
 
 namespace TFB;
 
@@ -42,7 +43,7 @@ public class PersonalitySheetsService
 
     public List<Personality> LoadPersonalities()
     {
-        var range = "A2:E";
+        var range = "A2:F";
         
         SpreadsheetsResource.ValuesResource.GetRequest request =
             _service.Spreadsheets.Values.Get(_spreadsheetId, range);
@@ -65,7 +66,8 @@ public class PersonalitySheetsService
                         Command = row[0].ToString(),
                         PersonalityDescription = row[1].ToString(),
                         Name = row[2].ToString(),
-                        Model = row.ElementAtOrDefault(4)?.ToString() ?? string.Empty
+                        Model = row.ElementAtOrDefault(4)?.ToString() ?? string.Empty,
+                        HasOptions = (row.ElementAtOrDefault(5)?.ToString()?.Trim() ?? "N") == "Y"
                     };
                     
                     // try to get the temp

@@ -12,7 +12,7 @@ public class ChoicesService
         _client = client;
     }
 
-    public async Task<ChoicesResponse> GetPotentialChoices(ChoicesRequest request)
+    public async Task<ChoicesResponse?> GetPotentialChoices(ChoicesRequest request)
     {
         var messages = new string[]
         {
