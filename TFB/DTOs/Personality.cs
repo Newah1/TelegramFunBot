@@ -10,6 +10,8 @@ public class Personality
     public string Model { get; set; }
     public bool HasOptions { get; set; }
     public List<Message> MessageHistory { get; set; }
+    
+    public int TotalCount { get; set; }
 
     public bool MatchesCommand(string command) => command.ToLower().Trim() == Command.Trim();
 }

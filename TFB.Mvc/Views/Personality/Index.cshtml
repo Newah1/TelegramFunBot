@@ -3,23 +3,30 @@
 @{
     ViewData["Title"] = "Personality Page";
 }
-<h1 class="display-4">@Model.Name</h1>
 
-<p>
-    <p>
-        <strong>Command:</strong>
-    </p>
-    @Model.Command
-</p>
-<p>
-    <p>
-        <strong>Command:</strong>
-    </p>
-    @Model.PersonalityDescription
-</p>
-<p>
-    <p>
-        <strong>AI Model:</strong>
-    </p>
-    @(Model.Model ?? "gpt-3.5")
-</p>
+<div class="row">
+    <div class="col-xs-12 col-md-8">
+        <p class="h3">@Model.Name</p>
+        <p>
+            <p>
+                <strong>Command:</strong>
+            </p>
+            @Model.Command
+        </p>
+        <p>
+            <p>
+                <strong>Command:</strong>
+            </p>
+            @Model.PersonalityDescription
+        </p>
+        <p>
+            <p>
+                <strong>AI Model:</strong>
+            </p>
+            @(Model.Model ?? "gpt-3.5")
+        </p>
+    </div>
+    <div class="col-xs-12 col-md-4">
+        @await Html.PartialAsync("_Messages", Model.MessageHistory)
+    </div>
+</div>

@@ -22,4 +22,6 @@ public class Personality
     public string PersonalityDescription { get; set; }
     public double Temperature { get; set; }
     public string Model { get; set; }
+    
+    public int TotalCount { get; set; }
 }

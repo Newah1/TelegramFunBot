@@ -2,6 +2,8 @@ using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Configurations;
 using TFB.Models;
 using TFB.Services;
+using TFB.Services.Analysis;
+using TFB.Services.OpenRouter;
 
 namespace TFB.Tests;
 

@@ -66,6 +66,13 @@ public class PersonalityService : IPersonalityService
             query += " WHERE p.PersonalityId=@PersonalityId";
         }
         
+        
+
+        if (request.IncludeMessageHistory)
+        {
+            query += " ORDER BY mh.DateCreated ASC";
+        }
+        
         if (request.Limit != null)
         {
             query += $" LIMIT {request.Limit}";
@@ -74,11 +81,6 @@ public class PersonalityService : IPersonalityService
         if (request.Offset != null)
         {
             query += $" OFFSET {request.Offset}";
-        }
-
-        if (request.IncludeMessageHistory)
-        {
-            query += " ORDER BY mh.DateCreated ASC";
         }
 
         object param = new { };

@@ -37,7 +37,8 @@ public static class ModelMapper
                 MessageHistory = messageHistory,
                 Name = personality.Name,
                 Temperature = personality.Temperature,
-                Model = personality.Model
+                Model = personality.Model,
+                TotalCount = personality.TotalCount
             };
         });
         
