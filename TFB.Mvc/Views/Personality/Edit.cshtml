@@ -1,0 +1,20 @@
+@model TFB.DTOs.Personality
+
+@{
+    ViewData["Title"] = "Edit Personality Page";
+}
+
+@using (Html.BeginForm("Edit", "Personality", FormMethod.Post))
+{
+    <div>
+        <label for="name">Name:</label>
+        @Html.TextBoxFor(m => m.Name)
+    </div>
+
+    <div>
+        <label for="PersonalityDescription">Personality:</label>
+        @Html.TextAreaFor(m => m.PersonalityDescription, new { cols = 50, rows = 10 })
+    </div>
+
+    <button type="submit">Update Personality</button>
+}

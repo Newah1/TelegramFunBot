@@ -22,7 +22,7 @@ namespace TFB.Services.OpenRouter
             this._logger = logger;
         }
 
-        public async Task<LocalChatCompletionResponse?> SendRequestAsync(ChatCompletionRequest request)
+        public async Task<LocalChatCompletionResponse?> SendRequestAsync(LocalChatCompletionRequest request)
         {
             // Create an HttpClient instance
             using var client = new HttpClient();

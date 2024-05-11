@@ -20,5 +20,7 @@ public class LocalChatCompletionRequest : ChatCompletionRequest
 {
     [JsonProperty("stream")]
     public bool Stream { get; set; }
+    [JsonProperty("max_length")]
+    public int MaxLength { get; set; } = 8000;
 
 }

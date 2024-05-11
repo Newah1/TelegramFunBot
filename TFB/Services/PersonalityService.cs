@@ -45,7 +45,24 @@ public class PersonalityService : IPersonalityService
     {
         return _personalities;
     }
-    
+
+    public async Task<int?> UpdatePersonality(int personalityId, string name, string personalityDescription)
+    {
+        var query = @"
+        UPDATE Personalities
+        SET PersonalityDescription = @Description, Name = @Name
+        WHERE PersonalityId = @PersonalityId;
+
+        SELECT PersonalityId FROM Personalities
+        WHERE Name = @Name AND PersonalityDescription = @Description;
+    ";
+
+        using var connection = _databaseService.Connect();
+
+        var insertedId = await connection.QueryFirstOrDefaultAsync<int>(query, new { Name = name, Description = personalityDescription, PersonalityId = personalityId });
+
+        return insertedId;
+    }
     public async Task<IEnumerable<Models.Personality>> GetPersonalities(PersonalityRequest request)
     {
         if (DateTime.Now >= _nextExpiration)
@@ -87,7 +104,7 @@ public class PersonalityService : IPersonalityService
 
         if (request.PersonalityId != null)
         {
-            param = new { PersonalityId = request.PersonalityId };
+            param = new { request.PersonalityId };
         }
         
         using var connection = _databaseService.Connect();
