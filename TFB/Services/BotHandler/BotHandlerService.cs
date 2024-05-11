@@ -1,11 +1,8 @@
-using Google.Apis.Logging;
 using Microsoft.Extensions.Logging;
-using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
 using TFB.DTOs.Settings;
 using TFB.Models;
 using TFB.Services.Analysis;
-using TFB.Services.OpenRouter;
 using Message = TFB.DTOs.Message;
 using MessageType = TFB.DTOs.MessageType;
 using Personality = TFB.DTOs.Personality;
@@ -15,35 +12,25 @@ namespace TFB.Services.BotHandler;
 public class BotHandlerService
 {
     private TelegramService _telegramService;
-    private OpenAIClient _openAiClient;
     private readonly IMessageHistoryService _messageHistoryService;
-    private PersonalitySheetsService _personalitySheetsService;
     private IPersonalityService _personalityService;
-    private IOpenRouterService _openRouterService;
-    private ChatSettings _chatSettings;
     private CompressorService _compressorService;
-    private ChoicesService _choicesService;
     private AnalysisService _analysisService;
     private GeneralSettings _generalSettings;
     private ILogger<BotHandlerService> _logger;
-
-    private DateTime _lastRanSpreadsheet = DateTime.Now;
-    public BotHandlerService(AnalysisService analysisService, IPersonalityService personalityService, TelegramService telegramService,
-        PersonalitySheetsService personalitySheetsService,
-        OpenAIClient openAiClient, IMessageHistoryService messageHistoryService,
-        IOpenRouterService openRouterService, ChatSettings chatSettings,
-        CompressorService compressorService, ChoicesService choicesService, GeneralSettings generalSettings, ILogger<BotHandlerService> logger)
+    public BotHandlerService(AnalysisService analysisService, 
+        IPersonalityService personalityService, 
+        TelegramService telegramService,
+        IMessageHistoryService messageHistoryService,
+        CompressorService compressorService,
+        GeneralSettings generalSettings,
+        ILogger<BotHandlerService> logger)
     {
         _analysisService = analysisService;
         _personalityService = personalityService;
         _telegramService = telegramService;
-        _personalitySheetsService = personalitySheetsService;
-        _openAiClient = openAiClient;
         _messageHistoryService = messageHistoryService;
-        _openRouterService = openRouterService;
-        _chatSettings = chatSettings;
         _compressorService = compressorService;
-        _choicesService = choicesService;
         _generalSettings = generalSettings;
         _logger = logger;
     }
