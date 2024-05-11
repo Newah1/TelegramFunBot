@@ -8,4 +8,5 @@ public interface IMessageHistoryService
     Task<MessageHistory?> UpdateMessageSummary(MessageHistory messageHistory);
     Task<int> WipeMessagesByPersonality(int personalityId);
     Task<IEnumerable<MessageHistory>> GetAlLMessagesByAuthor(string author);
+    Task<string> GetSummary(int? personalityId, string user);
 }

@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TFB", "TFB\TFB.csproj", "{D90FEE29-B066-4C7E-878B-D95785B84280}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TFB.Tests", "TFB.Tests\TFB.Tests.csproj", "{86A08817-B2B2-4C16-81B2-68399771FD28}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TFB.Mvc", "TFB.Mvc\TFB.Mvc.csproj", "{E7218545-25F4-4B95-AD5C-B939DD2F7EEB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D90FEE29-B066-4C7E-878B-D95785B84280}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D90FEE29-B066-4C7E-878B-D95785B84280}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D90FEE29-B066-4C7E-878B-D95785B84280}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D90FEE29-B066-4C7E-878B-D95785B84280}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86A08817-B2B2-4C16-81B2-68399771FD28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86A08817-B2B2-4C16-81B2-68399771FD28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86A08817-B2B2-4C16-81B2-68399771FD28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86A08817-B2B2-4C16-81B2-68399771FD28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7218545-25F4-4B95-AD5C-B939DD2F7EEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7218545-25F4-4B95-AD5C-B939DD2F7EEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7218545-25F4-4B95-AD5C-B939DD2F7EEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7218545-25F4-4B95-AD5C-B939DD2F7EEB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

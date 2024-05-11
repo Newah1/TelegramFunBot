@@ -94,4 +94,50 @@ public class ChatService
         return result;
     }
 
+    public static async Task<ChatCompletionResponse?> SendChat(Message[] msgs, LocalChatService client, double temperature = 0.7, string model = "llama3")
+    {
+        string error;
+        LocalChatCompletionResponse? result = null;
+        try
+        {
+            var chatCompletion = new LocalChatCompletionRequest()
+            {
+                Model = "llama3",
+                Messages = msgs,
+                Temperature = temperature
+            };
+            result = await client.SendRequestAsync(chatCompletion);
+        }
+        catch (InvalidChatCompletionException e)
+        {
+            Console.WriteLine($"Invalid completion {e.Message} {e.InnerException?.Message}");
+            
+            error = "Something went wrong...";
+        }
+        catch (CompletionClientValidationException e)
+        {
+            Console.WriteLine($"Client validation exception {e.Message}");
+            error = "Something went wrong...";
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+            error = "Something went wrong...";
+        }
+
+        if(result == null)
+        {
+            return null;
+        }
+
+        var response = new ChatCompletionResponse()
+        {
+            Model = result.Model,
+            Choices = new List<Choice>() { new Choice() { Message = new Message() { Content = result.Choices.Content, Role = result.Choices.Role } } }.ToArray()
+
+        };
+
+        return response;
+    }
+
 }

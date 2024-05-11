@@ -22,8 +22,7 @@ public class PersonalityController : Controller
         var personalityRequest = new PersonalityRequest()
         {
             PersonalityId = personalityId, 
-            IncludeMessageHistory = true,
-            Limit = 1
+            IncludeMessageHistory = true
         };
 
         var personalities = await _personalityService.GetPersonalities(personalityRequest);

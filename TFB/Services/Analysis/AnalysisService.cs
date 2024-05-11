@@ -18,6 +18,7 @@ public class AnalysisService
     
     private OpenAIClient _aiClient;
     private IOpenRouterService _aiRouterClient;
+    private LocalChatService _localChatService;
     private ChatSettings _chatSettings;
     
     public string Command = "/batman";
@@ -30,11 +31,13 @@ Make sure to keep responses to one paragraph  Here is the context of the message
 
     public string MessageTemplate = "Author: {0} \n Message: {1} \n Date Posted {2} \n";
     
-    public AnalysisService(OpenAIClient aiClient, ChatSettings chatSettings, IOpenRouterService aiRouterClient)
+    public AnalysisService(OpenAIClient aiClient, ChatSettings chatSettings, IOpenRouterService aiRouterClient, LocalChatService localChatService)
     {
         _aiClient = aiClient;
         _chatSettings = chatSettings;
         _aiRouterClient = aiRouterClient;
+        _localChatService = localChatService;
+
 
         Messages = new List<Message>();
         OwnMessages = new List<Message>();
@@ -80,6 +83,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
     public static string BuildCombinedMessages(List<Message> messages, string command, string messageTemplate)
     {
         var outputString = "";
+        messages = messages.OrderBy(mh => mh.DatePosted).ToList(); 
         for(var i = 0; i < messages.Count; i++)
         {
             var message = messages[i];
@@ -139,7 +143,7 @@ Make sure to keep responses to one paragraph  Here is the context of the message
     {
         AnalysisResponse response = new AnalysisResponse();
 
-        var msgs = BuildChatCompletionMessagesBasedOnHistory(request.Personality);
+        var msgs = BuildChatCompletionMessagesBasedOnHistory(request.Personality, request.Summary);
         response.ChatCompletionChoices = msgs;
         string message = String.Empty;
         
@@ -170,6 +174,18 @@ Make sure to keep responses to one paragraph  Here is the context of the message
                 message = completion?.Choices?.FirstOrDefault()?.Message.Content ?? "";
                 break;
             }
+            case ChatTypes.Local:
+            {
+                var messages = msgs.Select(msg => new Services.OpenRouter.Message()
+                {
+                    Content = msg.Content,
+                    Role = msg.Role
+                }).ToList();
+                var completion = await ChatService.SendChat(messages.ToArray(), _localChatService, temperature: request.Personality.Temperature ?? _chatSettings.Temperature, "llama3");
+
+                message = completion?.Choices?.FirstOrDefault()?.Message.Content ?? "";
+                break;
+            }
         }
 
         OwnMessages.Add(new DTOs.Message()
@@ -187,17 +203,17 @@ Make sure to keep responses to one paragraph  Here is the context of the message
         return response;
     }
 
-    private List<ChatCompletionMessage> BuildChatCompletionMessagesBasedOnHistory(Personality personality)
+    private List<ChatCompletionMessage> BuildChatCompletionMessagesBasedOnHistory(Personality personality, string? summary = null)
     {
         var msgs = new List<ChatCompletionMessage>();
         
         msgs.Add(new ChatCompletionMessage()
         {
             Role = "system",
-            Content = String.Format(personality.PersonalityDescription, "")
+            Content = String.Format(personality.PersonalityDescription, summary ?? "")
         });
         
-        foreach (var message in personality.MessageHistory)
+        foreach (var message in personality.MessageHistory.OrderBy(mh => mh.DatePosted).ToList())
         {
             msgs.Add(new ChatCompletionMessage()
             {

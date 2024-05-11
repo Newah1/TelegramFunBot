@@ -18,6 +18,17 @@ public class MessageHistoryService : IMessageHistoryService
         _databaseService = databaseService;
     }
 
+    public async Task<string> GetSummary(int? personalityId, string user)
+    {
+        var query = $"SELECT Summary FROM {_tableName} WHERE PersonalityId=@PersonalityId AND ConversationWith=@User AND Summary != '' ORDER BY DateCreated DESC LIMIT 1";
+
+        using var connection = _databaseService.Connect();
+
+        var summary = await connection.QueryFirstOrDefaultAsync<string>(query, new { PersonalityId = personalityId ?? 0, User = user});
+
+        return summary ?? "";
+    }
+
     public async Task<MessageHistory?> UpdateMessageSummary(MessageHistory messageHistory)
     {
         var query = $"UPDATE {_tableName} SET Summary=@Summary WHERE MessageHistoryId=@MessageHistoryId;" +
@@ -33,7 +44,7 @@ public class MessageHistoryService : IMessageHistoryService
     public async Task<MessageHistory?> AddMessage(MessageHistory messageHistory)
     {
         var query =
-            $"INSERT INTO {_tableName} (Author, Role, DateCreated, Message, PersonalityId) VALUES (@Author, @Role, @DateCreated, @Message, @PersonalityId);" +
+            $"INSERT INTO {_tableName} (Author, Role, DateCreated, Message, PersonalityId, ConversationWith) VALUES (@Author, @Role, @DateCreated, @Message, @PersonalityId, @ConversationWith);" +
             $"SELECT * FROM {_tableName} WHERE MessageHistoryId=last_insert_rowid();";
 
 

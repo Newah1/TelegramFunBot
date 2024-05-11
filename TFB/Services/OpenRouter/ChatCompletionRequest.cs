@@ -15,3 +15,10 @@ public class ChatCompletionRequest
     public Message[] Messages { get; set; }
 
 }
+
+public class LocalChatCompletionRequest : ChatCompletionRequest
+{
+    [JsonProperty("stream")]
+    public bool Stream { get; set; }
+
+}

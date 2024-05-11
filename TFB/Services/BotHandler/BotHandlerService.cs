@@ -1,3 +1,5 @@
+using Google.Apis.Logging;
+using Microsoft.Extensions.Logging;
 using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
 using TFB.DTOs.Settings;
@@ -22,13 +24,15 @@ public class BotHandlerService
     private CompressorService _compressorService;
     private ChoicesService _choicesService;
     private AnalysisService _analysisService;
+    private GeneralSettings _generalSettings;
+    private ILogger<BotHandlerService> _logger;
 
     private DateTime _lastRanSpreadsheet = DateTime.Now;
-    public BotHandlerService(AnalysisService analysisService, IPersonalityService personalityService, TelegramService telegramService, 
+    public BotHandlerService(AnalysisService analysisService, IPersonalityService personalityService, TelegramService telegramService,
         PersonalitySheetsService personalitySheetsService,
         OpenAIClient openAiClient, IMessageHistoryService messageHistoryService,
-        IOpenRouterService openRouterService, ChatSettings chatSettings, 
-        CompressorService compressorService, ChoicesService choicesService)
+        IOpenRouterService openRouterService, ChatSettings chatSettings,
+        CompressorService compressorService, ChoicesService choicesService, GeneralSettings generalSettings, ILogger<BotHandlerService> logger)
     {
         _analysisService = analysisService;
         _personalityService = personalityService;
@@ -40,10 +44,11 @@ public class BotHandlerService
         _chatSettings = chatSettings;
         _compressorService = compressorService;
         _choicesService = choicesService;
-        
+        _generalSettings = generalSettings;
+        _logger = logger;
     }
 
-    private async Task<MessageHistory> SaveMessage(TFB.DTOs.Message message, Personality personality)
+    private async Task<MessageHistory> SaveMessage(Message message, Personality personality)
     {
         var messageHistory = new MessageHistory()
         {
@@ -51,13 +56,14 @@ public class BotHandlerService
             Message = message.Value,
             DateCreated = message.DatePosted,
             PersonalityId = personality.PersonalityId,
-            Role = message.MessageType == MessageType.User ? "user" : "system"
+            Role = message.MessageType == MessageType.User ? "user" : "system",
+            ConversationWith = message.ConversationWith
         };
 
         return await _messageHistoryService.AddMessage(messageHistory);
     }
 
-    private async Task GetCompressedVersion(Personality personality, MessageHistory messageHistory, List<ChatCompletionMessage> chatCompletion)
+    private async Task GenerateCompressedVersion(Personality personality, MessageHistory messageHistory, List<ChatCompletionMessage> chatCompletion)
     {
         string MessageTemplate = "Author: {0} \n Message: {1} \n Date Posted {2} \n";
         var combined =
@@ -88,6 +94,31 @@ public class BotHandlerService
                 continue;
             }
 
+            var author = (request.TelegramMessage?.From?.Username ?? (request.TelegramMessage?.From?.FirstName ?? "Default*User"));
+
+            personality.MessageHistory = personality.MessageHistory
+                .OrderByDescending(mh => mh.DatePosted)
+                .Where(mh =>
+                {
+                    return mh.ConversationWith == author;
+                })
+                .TakeWhile(mh => string.IsNullOrEmpty(mh.Summary))
+                .ToList();
+
+            string? summary = null;
+            summary = await _messageHistoryService.GetSummary(personality.PersonalityId, author);
+
+            if (personality.MessageHistory.Count > _generalSettings.MaxHistoryBeforeSummary)
+            {
+                _logger.LogDebug($"{personality.Name} has exceeded message history. Attempting to get the summary.");
+                summary = await _messageHistoryService.GetSummary(personality.PersonalityId, author);
+
+                if (string.IsNullOrEmpty(summary))
+                {
+                    _logger.LogDebug($"There was no summary for {personality.Name} and {author}.");
+                }
+            }
+
             if (request.MessageText.Contains("wipe_context"))
             {
                 var deleted = await _messageHistoryService.WipeMessagesByPersonality(personality.PersonalityId);
@@ -105,7 +136,9 @@ public class BotHandlerService
             // getting analysis
             var req = new AnalysisRequest()
             {
-                Personality = personality
+                Personality = personality,
+                ChatTypes = ChatTypes.Local,
+                Summary = summary // nullable
             };
             var response = await _analysisService.Analysis(req);
             
@@ -113,7 +146,7 @@ public class BotHandlerService
             {
                 await _telegramService.Send(
                     request.ChatId, 
-                    $"Something went wrong getting {personality.Name} to respond. Maybe they're sick?", 
+                    $"...", 
                     request.TelegramMessage.ReplyToMessage?.MessageId);
                 continue;
             }
@@ -126,139 +159,22 @@ public class BotHandlerService
                 Author = personality.Name,
                 DatePosted = DateTime.UtcNow,
                 MessageType = MessageType.Bot,
-                Value = response.Message
+                Value = response.Message,
+                ConversationWith = author
             };
             
             personality.MessageHistory.Add(botMessage);
             
             // save the bot message
             var savedBotMessage = await SaveMessage(botMessage, personality);
-            
 
-            Task.Run(async () => { await GetCompressedVersion(personality,savedBotMessage, response.ChatCompletionChoices); });
+            if (personality.MessageHistory.Count > _generalSettings.MaxHistoryBeforeSummary)
+            {
+                _ = Task.Run(async () => { await GenerateCompressedVersion(personality, savedBotMessage, response.ChatCompletionChoices); });
+                
+            }
 
         }
         
-        /*foreach (var analysisService in personalities)
-        {
-            analysisService.AddMessage(message);
-            analysisService.CombinedMessages.Add(message);
-        }
-
-        if (command == "/wipe_context")
-        {
-            foreach (var analysisService in _analyzers)
-            {
-                analysisService.WipeMessages();
-            }
-            await _telegramBotClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: $"Wiped {_analyzers.Count().ToString()} personalities.",
-                cancellationToken: cancellationToken, replyToMessageId: telegramMessage.ReplyToMessage?.MessageId);
-        } else if (command == "/report")
-        {
-            await _telegramBotClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: new ReportService(_analyzers.ToList()).GenerateReport(),
-                cancellationToken: cancellationToken, replyToMessageId: telegramMessage.ReplyToMessage?.MessageId);
-        }
-        
-        
-        Console.WriteLine($"Got a message from {telegramMessage.From?.FirstName} with contents: {messageText}");
-        string analysis;
-        var matchingAnylizers = _analyzers.Where(analyzer => analyzer.MatchesCommand(command));
-        foreach (var analysisService in matchingAnylizers)
-        {
-            if (messageText.Contains("requesting analysis"))
-            {
-                await _telegramBotClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "I know this: " + analysisService.Compressed ?? "No context.",
-                        cancellationToken: cancellationToken, replyToMessageId: telegramMessage.ReplyToMessage?.MessageId);
-                return;
-
-            }
-
-            Console.WriteLine($"Handling analysis with {analysisService.Name}");
-            
-            // tell the bot to "type"
-            var timer = new Timer(state =>
-            {
-                if (_telegramBotClient != null)
-                    _telegramBotClient.SendChatActionAsync(chatId, ChatAction.Typing,
-                        telegramMessage.ReplyToMessage?.MessageId, cancellationToken: cancellationToken);
-            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
-
-            
-            analysis = await analysisService.Analysis();
-            
-            
-            ChoicesResponse? choices = null;
-            if (analysis.Length > 0 && analysisService._personality.HasOptions)
-            {
-                // get choices
-                choices = await _choicesService.GetPotentialChoices(new ChoicesRequest()
-                {
-                    Author = analysisService.Name,
-                    Message = analysis,
-                    Command = analysisService.Command
-                });
-            }
-
-            InlineKeyboardMarkup? inlineKeyboard = null;
-            if (choices != null && choices?.Choices != null && choices.Choices.Any())
-            {
-                Console.WriteLine("choices!");
-                inlineKeyboard = new(
-                    choices.Choices.Select(choice => new [] {InlineKeyboardButton.WithCallbackData(text:choice.Name, callbackData: choice.Command)})
-                );
-            }
-            
-            // stop "typing"
-            await timer.DisposeAsync();
-            if (string.IsNullOrEmpty(analysis))
-            {
-                await _telegramService.Send(
-                    chatId, 
-                    $"Something went wrong getting {analysisService.Name} to respond. Maybe they're sick?", 
-                    telegramMessage.ReplyToMessage?.MessageId);
-                continue;
-            }
-            
-            // send the text message
-            await _telegramService.Send(chatId, analysis, telegramMessage.ReplyToMessage?.MessageId, inlineKeyboard);
-
-            var compressionResponse = await _compressorService.RequestCompression(_compressorService.BuildBulkCompression(new string[]{ analysisService.BuildCombinedMessages() }));
-
-            if (compressionResponse.Any(cr => cr.Success))
-            {
-                analysisService.Compressed = compressionResponse.FirstOrDefault()?.Compressed;
-            }
-
-            var latestMessage = new TFB.DTOs.Message()
-            {
-                Author = analysisService.Name,
-                DatePosted = DateTime.Now,
-                Value = analysis,
-                MessageType = MessageType.Bot
-            };
-            analysisService.UserBotDiscourse.Add(message);
-            analysisService.UserBotDiscourse.Add(latestMessage);
-            analysisService.CombinedMessages.Add(latestMessage);
-
-            // give other analyzers your most recent message
-            foreach (var otherAnalyzers in _analyzers.Where(a => a != analysisService).ToList())
-            {
-                Console.WriteLine($"Giving {otherAnalyzers.Name} the most recent message [{analysis.Substring(0, 10)}...]");
-                if (compressionResponse.Any(cr => cr.Success))
-                {
-                    otherAnalyzers.Compressed = compressionResponse.FirstOrDefault().Compressed;
-                }
-
-                otherAnalyzers.AddMessage(latestMessage);
-                otherAnalyzers.CombinedMessages.Add(latestMessage);
-            }
-            
-        }*/
     }
 }

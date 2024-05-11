@@ -18,9 +18,13 @@ public static class ModelMapper
                     {
                         Author = mh.Author,
                         DatePosted = mh.DateCreated,
+                        ConversationWith = mh.ConversationWith,
+                        Summary = mh.Summary,
                         MessageType = (mh.Role == "user") ? MessageType.User : MessageType.Bot,
                         Value = mh.Message
-                    }).ToList();
+                    })
+                    .OrderByDescending(mh => mh.DatePosted)
+                    .ToList();
                 }
                 catch (Exception e)
                 {

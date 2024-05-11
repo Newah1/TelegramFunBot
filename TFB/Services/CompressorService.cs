@@ -1,15 +1,16 @@
 using Microsoft.Extensions.Logging;
 using Standard.AI.OpenAI.Clients.OpenAIs;
 using Standard.AI.OpenAI.Models.Services.Foundations.ChatCompletions;
+using TFB.Services.OpenRouter;
 
 namespace TFB.Services;
 
 public class CompressorService
 {
-    private readonly OpenAIClient _client;
+    private readonly LocalChatService _client;
     private readonly ILogger<CompressorService> _logger;
 
-    public CompressorService(OpenAIClient client, ILogger<CompressorService> logger)
+    public CompressorService(LocalChatService client, ILogger<CompressorService> logger)
     {
         _client = client;
         _logger = logger;
@@ -51,21 +52,20 @@ public class CompressorService
                 MaxTokens = 3000
             }
         };
-        ChatCompletion? result = new ChatCompletion();
+        LocalChatCompletionResponse? result = new LocalChatCompletionResponse();
         try
         {
-            result = await _client
-                .ChatCompletions
-                .SendChatCompletionAsync(chatCompletion);
-
-            for (var i = 0; i < result.Response.Choices.Length; i++)
+            result = await _client.SendRequestAsync(new OpenRouter.LocalChatCompletionRequest
             {
-                var content = result.Response.Choices[i].Message.Content;
-                responses[i].Compressed = content;
-                responses[i].TokensAfter = TokenEstimatorService.EstimateTokens(content);
-                _logger.LogDebug($"Tokens after: {responses[i].TokensAfter.ToString()}");
-                responses[i].Success = true;
-            }
+                Messages = messages.Select(m => new Message { Content = m.Content, Role = m.Role }).ToArray(),
+                Model = "llama3",
+                Stream = false
+            });
+
+            var content = result.Choices.Content;
+            responses[0].Compressed = content;
+            responses[0].TokensAfter = TokenEstimatorService.EstimateTokens(content);
+            responses[0].Success = true;
         }
         catch (Exception e)
         {

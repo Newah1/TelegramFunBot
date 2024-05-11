@@ -69,6 +69,7 @@ public class Startup : IHostedService
         serviceCollection.AddSingleton<ChoicesService>();
 
         serviceCollection.AddSingleton<IOpenRouterService, OpenRouterService>();
+        serviceCollection.AddSingleton<LocalChatService>();
         serviceCollection.AddSingleton<IDatabaseService, DatabaseService>();
         serviceCollection.AddSingleton<IImportPersonalityService, ImportPersonalityService>();
         serviceCollection.AddScoped<IPersonService, PersonService>();

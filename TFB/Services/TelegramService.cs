@@ -58,12 +58,15 @@ public class TelegramService
 
         var chatId = message?.Chat.Id ?? 0;
 
+        var author = message?.From?.Username ?? message?.From?.FirstName ?? "Default*User";
+
         var dtoMessage = new TFB.DTOs.Message()
         {
-            Author = message?.From?.FirstName ?? "Default*User",
+            Author = author,
             DatePosted = message?.Date ?? DateTime.Now,
             Value = messageText,
-            MessageType = MessageType.User
+            MessageType = MessageType.User,
+            ConversationWith = author
         };
 
         var botHandlerRequest = new BotHandlerRequest()
@@ -72,7 +75,7 @@ public class TelegramService
             ChatId = chatId,
             Command = command,
             Message = dtoMessage,
-            MessageText = messageText,
+            MessageText = $"{messageText} From: {update.Message.From.FirstName}",
             TelegramMessage = update.Message ?? new Message()
         };
         

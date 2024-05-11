@@ -1,0 +1,34 @@
+@model X.PagedList.IPagedList<TFB.DTOs.Personality>
+@using X.PagedList.Mvc.Core;
+
+@{
+    ViewData["Title"] = "Personality Page";
+}
+
+<div class="row">
+    <ul class="list-group list-group-flush">
+        @foreach (var personality in Model)
+        {
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-4">
+                        <a class="fw-bold" href="@Url.Action("Index", new { personality.PersonalityId })">
+                            <span>@personality.Name</span>
+                        </a>
+                    </div>
+                    <div class="col-2 offset-3 align-content-end">
+                        <span>@personality.Command</span>
+                    </div>
+                    <div class="col-2 align-content-end">
+                        <span>@personality.MessageHistory.Count Messages</span>
+                    </div>
+                </div>
+            </li>
+        }
+    </ul>
+</div>
+<br />
+Page @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) of @Model.PageCount
+
+@Html.PagedListPager(Model, page => Url.Action("Personalities", 
+    new { page, sortOrder = ViewBag.CurrentSort, currentFilter = ViewBag.CurrentFilter }))

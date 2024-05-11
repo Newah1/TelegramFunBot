@@ -13,4 +13,5 @@ public class MessageHistory
     public int PersonalityId { get; set; }
     public string Summary { get; set; }
     public Personality Personality { get; set; }
+    public string ConversationWith { get; set; }
 }
